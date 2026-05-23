@@ -1,0 +1,337 @@
+\documentclass[letterpaper,10pt]{article}
+
+%========================================================
+% IF YOU HAVE THE MTECK.STY FILE SEPARATELY:
+% \usepackage{mteck} 
+%========================================================
+% OR, PASTE THE STY CONTENTS HERE DIRECTLY IF YOU PREFER:
+% (Below is the same code as in the provided template)
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{fontawesome5}
+\usepackage{multicol}
+\usepackage{bookmark}
+\usepackage{lastpage}
+\usepackage{graphicx}
+\usepackage{multicol}
+
+% Choose your fonts (uncomment the line you like).
+% Examples:
+%\usepackage[sfdefault]{FiraSans}
+%\usepackage[sfdefault]{roboto}
+%\usepackage[sfdefault]{noto-sans}
+%\usepackage[default]{sourcesanspro}
+
+% If you want a serif-based style, you might use:
+\usepackage{CormorantGaramond}
+\usepackage{charter}
+
+% Colors
+\usepackage{xcolor}
+\definecolor{accentTitle}{HTML}{0e6e55}
+\definecolor{accentText}{HTML}{0e6e55}
+\definecolor{accentLine}{HTML}{a16f0b}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\urlstyle{same}
+
+% Adjust Margins
+\addtolength{\oddsidemargin}{-0.7in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1.19in}
+\addtolength{\topmargin}{-0.7in}
+\addtolength{\textheight}{1.4in}
+
+\setlength{\multicolsep}{-3.0pt}
+\setlength{\columnsep}{-1pt}
+\setlength{\tabcolsep}{0pt}
+\setlength{\footskip}{3.7pt}
+\raggedbottom
+\raggedright
+
+% ATS Readability
+\input{glyphtounicode}
+\pdfgentounicode=1
+
+%-----------------%
+% Custom Commands %
+%-----------------%
+
+\newcommand{\documentTitle}[2]{
+  \begin{center}
+    {\Huge\color{accentTitle} #1}
+    \vspace{10pt}
+    {\color{accentLine} \hrule}
+    \vspace{2pt}
+    {\footnotesize #2}
+    \vspace{2pt}
+    {\color{accentLine} \hrule}
+  \end{center}
+}
+
+\newcommand{\documentFooter}[1]{
+  \setlength{\footskip}{10.25pt}
+  \fancyfoot[C]{\footnotesize #1}
+}
+
+\newcommand{\numberedPages}{
+  \documentFooter{\thepage/\pageref{LastPage}}
+}
+
+\titleformat{\section}{
+  \vspace{-5pt}
+  \color{accentText}
+  \raggedright\large\bfseries
+}{}{0em}{}[\color{accentLine}\titlerule]
+
+\newcommand{\tinysection}[1]{
+  \phantomsection
+  \addcontentsline{toc}{section}{#1}
+  {\large{\bfseries\color{accentText}#1} {\color{accentLine} |}}
+}
+
+\newcommand{\heading}[2]{
+  \hspace{10pt}#1\hfill#2\\
+}
+
+\newcommand{\headingBf}[2]{
+  \heading{\textbf{#1}}{\textbf{#2}}
+}
+
+\newcommand{\headingIt}[2]{
+  \heading{\textit{#1}}{\textit{#2}}
+}
+
+\newenvironment{resume_list}{
+  \vspace{-7pt}
+  \begin{itemize}[itemsep=-2px, parsep=1pt, leftmargin=30pt]
+}{
+  \end{itemize}
+}
+
+\newcommand{\itemTitle}[1]{
+  \item[] \underline{#1}\vspace{4pt}
+}
+
+\renewcommand\labelitemi{--}
+
+%==================================================
+\begin{document}
+
+% Example of optional page numbering (requires two runs):
+%\numberedPages
+
+%-----------------------------------
+% TOP HEADING: Name + Contact Info
+%-----------------------------------
+\begin{center}
+  \begin{minipage}[c]{0.15\textwidth}
+    \includegraphics[width=\linewidth,clip,keepaspectratio]{Oussama Fezzai.jpg}
+  \end{minipage}\hfill
+  \begin{minipage}[c]{0.80\textwidth}
+    \documentTitle{Oussama Fezzai}{
+      \href{tel:+33745400096}{\raisebox{-0.05\height}\faPhone\ +33 7 45 40 00 96} ~|~
+      \href{mailto:oussamafezzai06@gmail.com}{\raisebox{-0.15\height}\faEnvelope\ oussamafezzai06@gmail.com} ~|~
+      \href{https://www.linkedin.com/in/oussama-fezzai-72090621a/}{\raisebox{-0.15\height}\faLinkedin\ linkedin.com/oussama-fezzai} ~|~
+      \href{https://github.com/Fezzaioussama}{\raisebox{-0.15\height}\faGithub\ github.com/Fezzaioussama}
+    }
+  \end{minipage}
+\end{center}
+
+%----------------
+% SUMMARY
+%----------------
+
+\tinysection{Résumé}
+Développeur en intelligence artificielle titulaire d’un Master en Computer Vision et Intelligence Artificielle, ainsi que d’un diplôme d’ingénieur en Automatique et Informatique Industrielle.
+
+%-------------
+% SKILLS / COMPÉTENCES
+%-------------
+
+\section{Compétences}
+
+\begin{multicols}{2}
+  \begin{tabular}{@{}l l@{}}
+    \textbf{Langages de programmation :} & C++, Python, MATLAB \\
+    \textbf{Bibliothèques Python :} & NumPy, Pandas, Tkinter, OpenCV \\
+    \textbf{Bibliothèques d’IA :} & PyTorch, Scikit-learn, Gym, Hugging Face, LangChain, LangGraph, Ollama \\
+    \textbf{Analyse de données :} & Excel, PowerBI, MySQL, SQL \\
+    \textbf{Plateformes Cloud :} & AWS, Scaleway \\
+    \textbf{Contrôle de version \& DevOps :} & Git, GitLab, GitHub, Docker, K8s, Gitlab-CI \\
+    \textbf{Programmation embarquée :} & FPGA, Microcontrôleurs \\
+    \textbf{IDE :} & VSCode, PyCharm  \\
+  \end{tabular}
+\end{multicols}
+
+%---------------
+% EXPERIENCE
+%---------------
+
+\section{Expérience}
+
+\headingBf{CELAD}{Janvier 2025 -- Présent}
+\headingIt{Ingénieur en Intelligence Artificielle (Mission R\&D GenAI)}{Toulouse, France}
+\begin{resume_list}
+  \item \textbf{Architecture et industrialisation d'un système RAG :} Développement d'une chaîne de traitement complète (ingestion, vectorisation FAISS, recherche contextuelle) pour l'interrogation de documents techniques et de code.
+  \item \textbf{Benchmarking et optimisation de LLMs :} Évaluation comparative de modèles Open Source (Llama 3, Mistral, DeepSeek) et implémentation de stratégies de prompting avancées (CoT, Few-shot) pour maximiser la précision.
+  \item \textbf{Mise en place de pipelines MLOps :} Containerisation de l'application (Docker) et automatisation des cycles de build/test/déploiement (CI/CD) pour assurer la robustesse en production.
+\end{resume_list}
+
+\headingBf{CELAD}{Mars 2024 -- Janvier 2025}
+\headingIt{Ingénieur R\&D - Systèmes d'Aide à la Conduite (Stage)}{Toulouse, France}
+\begin{resume_list}
+  \item \textbf{Pilotage du projet d'amélioration de l'assistance conducteur :} Conception d'un module IA capable de distinguer les comportements experts des comportements à risque pour optimiser la sécurité active.
+  \item \textbf{Ingénierie des données synthétiques :} Création d'un environnement de simulation haute-fidélité (CARLA, Blender) générant des scénarios complexes pour pallier le manque de données réelles.
+  \item \textbf{Modélisation par Apprentissage par Imitation :} Implémentation et entraînement d'algorithmes avancés (GAIL, IRL) couplés à un discriminateur pour apprendre une politique de conduite optimale.
+  \item \textbf{Optimisation de la robustesse et des hyperparamètres :} Mise en œuvre de stratégies de validation pour évaluer la fiabilité des politiques apprises face à des conditions de conduite imprévues et des cas limites.
+  \item \textbf{Évaluation de la performance temps réel :} Analyse des contraintes de calcul et réduction de la complexité du modèle pour garantir une faible latence (inférieure à 100ms) compatible avec une intégration embarquée.
+  \item \textbf{Analyse quantitative de la performance :} Développement d'une métrique de récompense et classification des trajectoires par clustering K-means pour valider l'efficacité et l'impact de l'assistance.
+\end{resume_list}
+
+\headingBf{Laboratoire de l’École Nationale Supérieure de Technologie}{Janvier 2023 -- Juillet 2023}
+\headingIt{Ingénieur Vision par Ordinateur \& IoT (Stage de fin d'études)}{Alger, Algérie}
+\begin{resume_list}
+  \item \textbf{Conception de modèles de détection de défauts :} Développement et comparaison de réseaux profonds (Transfer Learning via ResNet, InceptionV3) pour atteindre une haute précision industrielle.
+  \item \textbf{Ingénierie et augmentation des données :} Constitution du dataset et utilisation de GANs (Réseaux Antagonistes Génératifs) pour enrichir les données d'entraînement et améliorer la robustesse du modèle.
+  \item \textbf{Déploiement Edge et Intégration Industrielle :} Implémentation temps réel sur cibles GPU (NVIDIA Jetson Nano, RTX 3060) et orchestration de la communication machine-to-machine (Ethernet avec PLC pour le contrôle, TCP/IP avec Node-RED pour la supervision).
+\end{resume_list}
+
+\headingBf{Accenture (Programme Forage)}{Septembre 2022 -- Novembre 2022}
+\headingIt{Consultant Data Science}{à distance}
+\begin{resume_list}
+  \item \textbf{Pipeline ETL et consolidation de données :} Nettoyage et fusion de bases de données hétérogènes pour créer un entrepôt de données centralisé et fiable.
+  \item \textbf{Business Intelligence :} Développement de tableaux de bord interactifs (Power BI) traduisant des données brutes en indicateurs stratégiques pour la prise de décision.
+\end{resume_list}
+
+\headingBf{Sonatrach - OURHOUD Organization}{Janvier 2021 -- Mars 2021}
+\headingIt{Ingénierie d’Instrumentation et Automatisme (Stage)}{Hassi Messaoud, Algérie}
+\begin{resume_list}
+  \item \textbf{Conception technique :} Réalisation de plans P\&ID et schémas électriques sous AutoCAD pour les stations d'extraction Oil \& Gas.
+  \item \textbf{Automatisme industriel :} Programmation et maintenance de PLC pour assurer la continuité opérationnelle des processus d'extraction.
+\end{resume_list}
+
+%---------------
+% EDUCATION / FORMATION
+%---------------
+
+\section{Formation}
+
+\headingBf{Université Paris-Saclay}{Septembre 2023 -- Septembre 2024}
+\headingIt{Master International en Computer Vision et Intelligence Artificielle}{Île-de-France, France}
+
+\headingBf{École Nationale Supérieure de Technologie}{Septembre 2020 -- Juillet 2023}
+\headingIt{Diplôme d’Ingénieur en Automatique et Informatique Industrielle}{Alger, Algérie}
+
+\headingBf{École Nationale Polytechnique}{Septembre 2018 -- Juillet 2020}
+\headingIt{Classe Préparatoire aux Grandes Écoles en Sciences et Technologies}{Constantine, Algérie}
+
+%------------------------
+% PROFESSIONAL & PERSONAL PROJECTS / PROJETS PROFESSIONNELS ET PERSONNELS
+%-----------------------
+
+\section{Projets Professionnels \& Personnels}
+\begin{resume_list}
+  \item \textbf{Optimisation des réseaux neuronaux pour les dispositifs Edge} \\
+  Conception et AutoML d’architectures CNN adaptées aux contraintes mémoire et calcul des terminaux.  
+  Application de renforcement (RL) pour recherche de topologies performantes et déploiement optimisé en environnement embarqué.
+  
+\item \textbf{Détection du Cancer du Sein (CV)} \
+    Préparation du dataset, fine-tuning et évaluation de différents modèles de deep learning, puis déploiement du meilleur modèle pour la classification de mammographies.
+  
+  \item \textbf{Fine-tuning de Llama 3-8B} \\
+  Adaptation de Llama 3-8B via Hugging Face et PyTorch, en QLoRA pour réduire la taille modèle.  
+  Génération autonome de requêtes SQL à partir d’instructions en langage naturel et évaluation de la précision syntaxique.
+  
+  \item \textbf{Reconnaissance d’objets 3D à partir d’images 2D} \\
+  Reconnaissance 3D multi-vues d’objets à partir d’images 2D : Extraction de caractéristiques par CNN, classification par K-means, et reconstruction par maillage
+  \item \textbf{Classification Améliorée par Augmentation GAN} \\
+  Entraînement d’un GAN pour synthétiser des images réalistes et équilibrer les classes.  
+  Intégration des données synthétiques dans le pipeline de classification, avec validation croisée montrant + 5 \% de précision et meilleure robustesse.
+\end{resume_list}
+
+%---------------
+% PUBLICATIONS
+%---------------
+
+\section{Publications}
+\begin{resume_list}
+  \item \textbf{O. Fezzai, A. Taibeche, and K. Rebai, "Deep Learning for Product Quality Inspection: State of the Art," ResearchGate, Aug. 2023. [Online preprint]. Available online :} 
+    \href{https://www.researchgate.net/publication/372862316_Deep_Learning_for_product_quality_inspection_State_of_the_art}{URL}
+    
+  \item \textbf{Fezzai, O. ,"Neural Network Optimization For Edge Device" ResearchGate, Apr. 2024. [Online preprint]. Available online :}
+    \href{https://www.researchgate.net/publication/379807548_Neural_Network_Optimization_For_Edge_Device}{URL}
+\end{resume_list}
+
+
+%---------------
+% LANGUAGES / LANGUES
+%---------------
+
+\section{Langues}
+\begin{resume_list}
+  \item \textbf{Français :} Courant
+  \item \textbf{Anglais :} Avancé
+  \item \textbf{Arabe :} Langue maternelle
+\end{resume_list}
+
+%---------------
+% CERTIFICATES / CERTIFICATS
+%---------------
+
+%---------------
+% CERTIFICATES / CERTIFICATS
+%---------------
+
+\section{Certifications en IA}
+\begin{multicols}{2}
+\begin{itemize}[leftmargin=*, noitemsep]
+  \item \textbf{Python}: \href{https://www.hackerrank.com/certificates/ab53694f520a}{HackerRank}
+  \item \textbf{PyTorch}: \href{https://jovian.com/certificate/MFQTQNBWGA}{Jovian}
+  \item \textbf{AI Agents}: \href{https://huggingface.co/spaces/agents-course/Unit4-Final-Certificate}{Hugging Face}
+  
+  \columnbreak
+  \item \textbf{Power BI}: \href{https://openclassrooms.com/fr/courses/7110891/certificate_}{OpenClassrooms}
+  \item \textbf{Data Analysis and Visualization}: \href{https://forage-uploads-prod.s3.amazonaws.com/completion-certificates/Accenture%20North%20America/hzmoNKtzvAzXsEqx8_Accenture%20North%20America_zHgByq2kErH8rNaDD_1698163364092_completion_certificate.pdf}{Accenture}
+  \item \textbf{Machine Learning}: \href{https://www.coursera.org/account/accomplishments}{Coursera}
+
+  
+  % \item \textbf{SQL}: \href{https://confirm.udacity.com/issued-certificates}{Udacity}
+  % \item \textbf{Building Controls}: \href{https://www.se.com/ww/en/work/support/resources/certifications}{Schneider}
+
+\end{itemize}
+\end{multicols}
+\newline
+\textbf{Consultable en ligne depuis : } \url{https://drive.google.com/drive/folders/1KBGDsPCnDRc5lwqlviUlTqlbhjNgLUwv?usp=drive_link}
+
+% %---------------
+% % VOLUNTEERING / BÉNÉVOLAT
+% %---------------
+
+% \section{Bénévolat}
+% \noindent Vice-Président de l’Association Scientifique « EL-MARIFA » ; Membre du Club Scientifique d’IA « Alan Turing » ; Membre du hackathon « FUTUROLOGY »
+
+
+%---------------------
+% PERSONAL QUALITIES / QUALITÉS PERSONNELLES
+%---------------------
+
+\section{Qualités Personnelles}
+Bonnes compétences en communication ; autonomie ; bon esprit d’équipe ; curiosité et initiative.
+
+%-------------
+% INTERESTS / CENTRES D’INTÉRÊT
+%-------------
+
+\section{Centres d’Intérêt}
+Lecture ; Sports (handball, football) ; Podcasts.
+
+\end{document}
+

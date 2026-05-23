@@ -1,0 +1,107 @@
+ À propos de l’offre d’emploi
+
+Description de l'entreprise
+
+
+Rejoignez un cabinet de conseil international qui accompagne les grandes transformations stratégiques.
+
+
+Nous sommes Wavestone : des expert·es passionné·es et orienté·es solutions, qui placent l’humain au cœur de la performance et de la croissance. Ambitieux·ses et en pleine expansion, nous développons sans cesse notre portefeuille de clients et de projets, avec une portée internationale et une réelle volonté de générer un impact positif.
+
+Êtes-vous un vrai team player, porté par des valeurs fortes ? Êtes-vous curieux·se et déterminé·e, avec l’envie d’apprendre chaque jour ? Êtes-vous du genre à relever les défis sans hésiter ? Alors vous êtes au bon endroit. Rejoignez Wavestone et exprimez votre potentiel dans un environnement stimulant et collaboratif, où l’on transforme les défis d’aujourd’hui en opportunités de demain.
+
+
+Description du poste
+
+
+Rejoindre la Business Unit AI, c’est intégrer une équipe de près de 200 consultant·e·s passionné·e·s qui accompagnent les grandes organisations dans la transformation de leurs modèles par la donnée et l’intelligence artificielle.
+
+Nous intervenons de bout en bout, de la détection de cas d’usage IA à fort impact métier à la conception de plateformes technologiques de pointe, jusqu’à la définition de modèles de gouvernance responsables et scalables.
+
+Notre force : une approche qui combine excellence technologique, compréhension fine des enjeux métiers et maîtrise des exigences réglementaires.
+
+Nous opérons auprès de clients grands comptes, en France et à l’international, en synergie avec les autres expertises du cabinet pour maximiser l’impact de nos interventions.
+
+
+🔥 Pourquoi nous rejoindre dans la BU IA ?
+
+
+Intégrer notre équipe, c’est plonger au cœur d’une communauté de 200 consultants IA et Data qui ne se contente pas de “suivre la vague GenAI” :
+
+    Nous construisons et déployons des plateformes data & IA robustes pour des milliers d’utilisateurs
+    Nous intervenons sur des cas d’usage à fort impact opérationnel
+    Nous travaillons avec les partenaires technologiques les plus avancés (Microsoft, Google, AWS, Databricks, Dataiku, …)
+    Nous combinons Data Engineering, MLOps/AIOps, et GenAI/Agentic pour sécuriser, scaler et valoriser les solutions.
+
+
+Cela en s’appuyant sur nos expertises transverses : product ownership, data science, architecture, cybersécurité et change management pour sécuriser et accélérer la transformation.
+
+
+🚀 En tant que AI Engineer, vous serez amené.e à jouer un rôle clé dans la conception et l’industrialisation de solutions IA avancées. Votre rôle ne se limitera pas à “développer des POCs” : vous serez projeté au cœur de la mise en production des solutions IA.
+
+    Concevoir, entraîner et évaluer des modèles ML/LLM adaptés aux besoins métier (pré-processing, fine-tuning, RAG, embeddings)
+    Développer des algorithmes d’automatisation et d’optimisation pour fiabiliser et accélérer les processus métiers
+    Créer des agents IA opérationnels (copilotes, assistants intelligents, orchestrations d’actions) en Python ou via des solutions Pro / Low-No-Code
+    Industrialiser vos modèles et agents via CI/CD, AIOps/MLOps/LLMOps, observabilité, monitoring, sécurité et conformité (incl. RGPD & souveraineté)
+    Tester & explorer en continu : nouveaux frameworks agentiques (LangChain, Semantic Kernel, orchestration multi-agents), technos émergentes et approches multimodales
+    Grandir au sein de la communauté IA : ateliers, retours d’expérience, participation ponctuelle à des avant-ventes et contribution à nos assets internes
+
+
+💼 Des missions concrètes, variées et à fort impact
+
+
+Quelques exemples de missions récentes :
+
+
+    Transport & Logistique : développement d’un agent IA métier basé sur GPT et automatisation de tâches répétitives pour augmenter la productivité des équipes terrain
+    Pharma : contribution à la mise en production de modèles de contrôle réglementaire pour sécuriser des processus critiques
+    Industrie & Énergie : création d’algorithmes prédictifs et supervision en temps réel des risques opérationnels avec une boucle d’apprentissage continue
+    Retail : développement et industrialisation d’agents IA low/no-code pour plusieurs milliers d’utilisateurs (incluant la gouvernance).
+
+
+Qualifications
+
+
+Plus que des cases à cocher, nous cherchons un constructeur d’IA :
+
+    Vous maîtrisez les fondamentaux de Python, et vous avez commencé à explorer des approches ML/LLM ou des frameworks agentiques (LangChain, Semantic Kernel, …)
+    Vous avez de bonnes bases en Software Engineering et vous avez déjà travaillé avec au moins un outil ou framework d’application (FastAPI, Flask, Streamlit, ou équivalent) ainsi qu’avec les outils de versionning (Git, GitLab/GitHub)
+    Vous êtes motivé·e à apprendre à déployer des solutions IA opérationnelles dans le cloud (Azure, AWS et/ou GCP) et à monter en compétence sur les bonnes pratiques DevOps (Docker, CI/CD…)
+    Vous êtes passionné·e par l’IA utile et responsable : vous aimez expérimenter, mais vous pensez aussi fiabilité, sécurité et impact réel
+    Vous avez soif de monter en compétence, de partager, de contribuer à une communauté et de pousser plus loin ce que les agents & modèles IA peuvent faire.
+
+
+🌟 Pourquoi vous aller adorer travailler au sein de notre équipe :
+
+    Vous aurez un impact direct : vos solutions seront utilisées par des clients stratégiques, parfois à l’échelle de dizaines de milliers d’utilisateurs.
+    Vous travaillerez sur des projets vitrines qui font parler dans l’écosystème IA.
+    Vous évoluerez dans une équipe où l’excellence technique est reconnue et valorisée.
+    Vous aurez la liberté d’explorer et tester les dernières innovations IA et agentiques.
+    Vous pourrez contribuer à structurer une offre de référence dans le paysage IA en Europe.
+
+Si vous voulez apprendre vite, développer vos compétences techniques et être au cœur du déploiement de l’IA en production, alors c’est ici que ça se passe !
+
+
+🌐 Langues : Vous êtes bilingue en français et parlez couramment l'anglais dans le cadre de vos activités professionnelles
+
+
+🎓 Jeune diplômé·e d’une grande école d’ingénieurs ou de commerce (Diplôme d'Ingénieur ou Programme Grande Ecole), spécialisé·e en data, IA ou transformation digitale, et motivé·e pour découvrir le conseil
+
+
+Informations complémentaires
+
+
+En rejoignant Wavestone, vous bénéficierez de :
+
+    Carreer model: une carrière sur mesure, cela signifie pour nous des possibilités de développement individuel. Notre Wavestone Horizon vous permet une évolution rapide de votre parcours et de la dynamique salariale.
+    Further training: let's grow together ! Vous avez accès à un vaste catalogue de formations et de certifications (cloud, DevOps, GenAI, etc.) pour vous former continuellement.
+    Smartworking: le travail flexible et mobile fait partie de notre ADN et permet un cadre adéquat de collaboration.
+    A Great Place To Work: nous sommes reconnus comme Great Place To Work 2025, nous classant numéro un dans notre catégorie parmi les organisations de plus de 2500 employés (France).
+    Mindfulness & health: programmes de mindfulness, coopérations sportives, groupes de fitness internes à l'entreprise…
+
+
+Wavestone est un employeur inclusif qui s'engage pour l'égalité des chances. Dans le cadre de cette politique de diversité et inclusion, Wavestone accompagne les personnes en situation de handicap et/ou nécessitant un aménagement durant leur process de recrutement et lors de leur prise de poste. 
+
+Lieu du poste
+
+
