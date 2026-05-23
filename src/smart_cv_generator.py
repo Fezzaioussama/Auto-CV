@@ -7,15 +7,14 @@ Uses vLLM for LLM-powered content generation and analysis.
 import os
 import re
 import json
-import requests
 from datetime import datetime
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 
-
-# vLLM Configuration
-VLLM_API_URL = os.environ.get('VLLM_API_URL', 'http://195.154.75.46:8002/v1')
-VLLM_MODEL = os.environ.get('VLLM_MODEL', 'Qwen/Qwen3-Coder-Next-FP8')
+try:  # importable both as a bare module (tests) and as the src package
+    from llm_client import complete, Task
+except ImportError:  # pragma: no cover
+    from .llm_client import complete, Task
 
 
 @dataclass
@@ -75,61 +74,39 @@ class SmartCVGenerator:
             with open(template_path, 'r', encoding='utf-8') as f:
                 self.template_content = f.read()
         
-        # vLLM configuration
-        self.api_url = api_url or VLLM_API_URL
-        self.model = model or VLLM_MODEL
-        self.api_key = os.environ.get('VLLM_API_KEY', None)
+        # LLM configuration. When left as None, llm_client resolves the
+        # provider, base URL, key and model from the environment (.env).
+        self.api_url = api_url  # explicit base-URL override, or None
+        self.model = model      # explicit model override, or None
+        self.api_key = None     # explicit key override, or None (env-resolved)
     
     def _call_llm_api(self, prompt: str, max_tokens: int = 2000, temperature: float = 0.3) -> Optional[str]:
         """
-        Call vLLM API with the given prompt.
-        
+        Call the configured LLM (local vLLM or OpenRouter) via llm_client.
+
         Args:
             prompt: The prompt to send
             max_tokens: Maximum tokens in response
             temperature: Sampling temperature
-            
+
         Returns:
             AI-generated response or None if call fails
         """
-        headers = {
-            "Content-Type": "application/json",
-        }
-        
-        # Add API key if provided
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        
-        try:
-            response = requests.post(
-                f"{self.api_url}/chat/completions",
-                json={
-                    "model": self.model,
-                    "messages": [
-                        {"role": "system", "content": "You are a helpful assistant that provides job analysis and CV recommendations. Always respond with clear, structured information."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                    "stream": False
-                },
-                headers=headers,
-                timeout=(10, 3600)
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('choices', [{}])[0].get('message', {}).get('content', '')
-            else:
-                print(f"vLLM API error: {response.status_code} - {response.text}")
-                return None
-                
-        except requests.exceptions.RequestException as e:
-            print(f"Error calling vLLM API: {e}")
-            return None
-        except Exception as e:
-            print(f"Unexpected error calling vLLM API: {e}")
-            return None
+        return complete(
+            prompt,
+            system_prompt=(
+                "You are a helpful assistant that provides job analysis and CV "
+                "recommendations. Always respond with clear, structured "
+                "information."
+            ),
+            task=Task.SMART_CV,
+            model=self.model,      # None -> resolved by task/provider
+            base_url=self.api_url,  # None -> configured base URL
+            api_key=self.api_key,   # None -> env-resolved key
+            temperature=temperature,
+            max_tokens=max_tokens,
+            log_prefix="smart-cv",
+        )
     
     def analyze_job_with_llm(self, job_text: str, cv_skills: List[str] = None) -> JobAnalysis:
         """

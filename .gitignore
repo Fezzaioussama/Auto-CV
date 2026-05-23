@@ -1,0 +1,84 @@
+# ─────────────────────────────────────────────
+# Secrets / local configuration  (NEVER commit)
+# ─────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets.json
+credentials.json
+
+# ─────────────────────────────────────────────
+# Python
+# ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+wheels/
+.Python
+pip-log.txt
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing / coverage / type-checking caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# Notebooks
+.ipynb_checkpoints/
+
+# ─────────────────────────────────────────────
+# Generated CV output  (keep the folder, drop the artifacts)
+# ─────────────────────────────────────────────
+output/*
+!output/.gitkeep
+
+# LaTeX build artifacts (anywhere)
+*.aux
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+*.out
+*.log
+
+# ─────────────────────────────────────────────
+# AI / agent tooling working dirs  (local-only)
+# ─────────────────────────────────────────────
+.claude/
+.claude/settings.local.json
+.agents/
+.codex/
+plans/
+
+# ─────────────────────────────────────────────
+# Editor / OS
+# ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
