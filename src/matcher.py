@@ -3,22 +3,18 @@ CV Matcher Module
 Matches CV content with job requirements using LLM analysis.
 """
 
-import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
 
 
-# vLLM endpoint shared with the section rewriter so analysis and rewriting use
-# the same model, instead of a separate (and usually offline) Ollama server.
-VLLM_API_URL = os.environ.get("VLLM_API_URL", "http://127.0.0.1:8002/v1")
-VLLM_MODEL = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-Coder-Next-FP8")
-VLLM_API_KEY = os.environ.get("VLLM_API_KEY")
-VLLM_CONNECT_TIMEOUT = float(os.environ.get("VLLM_CONNECT_TIMEOUT", "10"))
-VLLM_TIMEOUT = float(os.environ.get("VLLM_TIMEOUT", "3600"))
-# (connect, read): fail fast if unreachable, allow a slow model a long read.
-VLLM_REQUEST_TIMEOUT = (VLLM_CONNECT_TIMEOUT, VLLM_TIMEOUT)
+# All LLM access is centralized in llm_client, which picks the provider
+# (local vLLM or OpenRouter) and per-task model from the environment (.env).
+try:  # importable both as a bare module (main.py) and as the src package
+    from llm_client import complete, Task
+except ImportError:  # pragma: no cover
+    from .llm_client import complete, Task
 
 
 # Surface forms that should be treated as the same skill when comparing the
@@ -121,11 +117,10 @@ class CVMatcher:
             api_key: API key for the LLM service (if needed)
             model: Model name to use (defaults to the shared vLLM model)
         """
-        self.api_key = api_key or VLLM_API_KEY
-        self.model = model or VLLM_MODEL
-        # Default to the shared vLLM endpoint (OpenAI-compatible). Override with
-        # LLM_BASE_URL / VLLM_API_URL if you run a different server.
-        self.base_url = os.environ.get('LLM_BASE_URL', VLLM_API_URL)
+        # Kept for backward compatibility / explicit overrides. When left as
+        # None, llm_client resolves provider, base URL, key and model from env.
+        self.api_key = api_key
+        self.model = model
     
     def analyze_cv_with_job(self, cv_content: str, job_description: str) -> Dict:
         """
@@ -184,42 +179,19 @@ Please provide your analysis in the following JSON format:
 Provide specific, actionable recommendations based on the job requirements."""
     
     def _call_llm_api(self, prompt: str) -> Optional[str]:
-        """Call the OpenAI-compatible (vLLM) chat endpoint to get analysis."""
-        try:
-            import requests
-
-            headers = {"Content-Type": "application/json"}
-            if self.api_key:
-                headers["Authorization"] = f"Bearer {self.api_key}"
-
-            response = requests.post(
-                f"{self.base_url}/chat/completions",
-                json={
-                    "model": self.model,
-                    "messages": [
-                        {"role": "system", "content": "You are a technical recruiter. Respond ONLY with the requested JSON object, no prose and no markdown fences."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.2,  # Low temperature for focused, stable JSON
-                    "max_tokens": 1500,
-                    "stream": False,
-                },
-                headers=headers,
-                timeout=VLLM_REQUEST_TIMEOUT,
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('choices', [{}])[0].get('message', {}).get('content', '')
-
-            print(f"[matcher] LLM HTTP {response.status_code}: {response.text[:200]}")
-
-        except ImportError:
-            print("requests library not installed. Install with: pip install requests")
-        except Exception as e:
-            print(f"[matcher] Error calling LLM API: {e}")
-
-        return None
+        """Get the analysis JSON via the central LLM client (local/OpenRouter)."""
+        return complete(
+            prompt,
+            system_prompt=(
+                "You are a technical recruiter. Respond ONLY with the "
+                "requested JSON object, no prose and no markdown fences."
+            ),
+            task=Task.ANALYSIS,
+            model=self.model,  # None -> resolved by task/provider
+            temperature=0.2,  # Low temperature for focused, stable JSON
+            max_tokens=1500,
+            log_prefix="matcher",
+        )
     
     def _parse_analysis_response(self, response: str) -> Dict:
         """Parse the LLM response into structured format."""

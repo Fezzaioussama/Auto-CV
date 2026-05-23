@@ -1,5 +1,8 @@
 # Installation Guide for Auto-CV
 
+This is the basic installation guide. For developer onboarding and maintenance
+details, start with [README.md](README.md) in this folder.
+
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:
@@ -21,8 +24,8 @@ Before you begin, ensure you have the following installed:
 
 ```bash
 # Clone from git (if available)
-git clone https://github.com/yourusername/auto-cv.git
-cd auto-cv
+git clone <repository-url>
+cd auto-cv-app
 
 # OR if downloading as zip, extract it first
 ```
@@ -69,7 +72,34 @@ python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk
 
 Or run it as part of the first application startup - it will prompt you automatically.
 
-### Step 5: Verify LaTeX Installation
+### Step 5: Configure The LLM Provider
+
+Copy the tracked environment template:
+
+```bash
+cp .env.example .env
+```
+
+For a local OpenAI-compatible server, set:
+
+```text
+SOURCE_LLM=local
+LOCAL_LLM_URL=http://localhost:8000/v1
+LOCAL_LLM_MODEL=your-model
+```
+
+For OpenRouter, set:
+
+```text
+SOURCE_LLM=openrouter
+OPENROUTER_API_KEY=your-key
+OPENROUTER_MODEL=openai/gpt-4o-mini
+```
+
+The app still has legacy local defaults, so it can start without `.env`, but
+live AI behavior depends on the configured provider being reachable.
+
+### Step 6: Verify LaTeX Installation
 
 Make sure `pdflatex` is available in your system PATH:
 
@@ -93,8 +123,8 @@ sudo apt-get install texlive-latex-recommended texlive-fonts-recommended
 # Then run:
 python main.py
 
-# Or with explicit port:
-python main.py --port 5000
+# Or with a different port:
+flask --app main run --host 0.0.0.0 --port 5001 --debug
 ```
 
 The application will start on `http://localhost:5000`
@@ -141,7 +171,7 @@ python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk
 
 **Solution:** Use a different port:
 ```bash
-python main.py --port 5001
+flask --app main run --host 0.0.0.0 --port 5001 --debug
 ```
 
 #### 4. Permission errors during pip install
@@ -160,13 +190,20 @@ pip install --user -r requirements.txt
 
 ## Configuration
 
-### Environment Variables (Optional)
+### Environment Variables
 
-Create a `.env` file in the project root:
+Create `.env` from `.env.example`:
 
+```bash
+cp .env.example .env
 ```
-FLASK_ENV=production
-FLASK_DEBUG=0
+
+All LLM-related variables are documented in `.env.example` and
+[DEVELOPMENT.md](DEVELOPMENT.md). You can verify the active configuration once
+the server is running:
+
+```bash
+curl http://localhost:5000/api/llm/health
 ```
 
 ## Next Steps
@@ -182,15 +219,12 @@ After installation, try the following:
 
 If you encounter issues:
 
-1. Check the browser console for errors (F12 → Console)
+1. Check the browser console for errors (F12 -> Console)
 2. Check the terminal where you ran `python main.py` for backend errors
 3. Review the example files in the `examples/` directory
 4. Ensure all prerequisites are properly installed
 
 ## Support
 
-For issues, questions, or contributions:
-- Create an issue on GitHub
-- Email: support@auto-cv.com (placeholder)
-
-Happy CV optimizing! 🚀
+For issues, questions, or contributions, use the project's repository issue
+tracker or the communication channel used by the development team.

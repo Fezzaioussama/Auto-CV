@@ -514,6 +514,24 @@ async function renderLatexToPdfBlob() {
         });
         
         if (response.ok) {
+            // The server may have silently auto-repaired broken LaTeX. If so,
+            // update the editor to the version that actually compiles so the
+            // user never deals with the error and copies/downloads stay valid.
+            if (response.headers.get('X-Latex-Repaired') === 'true') {
+                const encoded = response.headers.get('X-Corrected-Latex');
+                if (encoded && optimizedLatexEditor) {
+                    try {
+                        const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+                        const corrected = new TextDecoder('utf-8').decode(bytes);
+                        if (corrected) {
+                            optimizedLatexEditor.value = corrected;
+                            updateLatexPreview();
+                        }
+                    } catch (e) {
+                        console.warn('Could not apply auto-corrected LaTeX:', e);
+                    }
+                }
+            }
             return await response.blob();
         } else {
             const errorData = await response.json();

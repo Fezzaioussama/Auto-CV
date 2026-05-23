@@ -17,19 +17,10 @@ import os
 import re
 from typing import Dict, List, Optional, Union
 
-import requests
-
-
-# Shared vLLM endpoint (see matcher.py / section_rewriter.py).
-VLLM_API_URL = os.environ.get("VLLM_API_URL", "http://127.0.0.1:8002/v1")
-VLLM_MODEL = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-Coder-Next-FP8")
-VLLM_API_KEY = os.environ.get("VLLM_API_KEY")
-# (connect, read): fail fast if the host is unreachable, but allow a slow model
-# a long time to actually respond. A single large value would also be applied to
-# the connect phase, which makes an unreachable endpoint hang for the full budget.
-VLLM_CONNECT_TIMEOUT = float(os.environ.get("VLLM_CONNECT_TIMEOUT", "10"))
-VLLM_TIMEOUT = float(os.environ.get("VLLM_TIMEOUT", "3600"))
-VLLM_REQUEST_TIMEOUT = (VLLM_CONNECT_TIMEOUT, VLLM_TIMEOUT)
+try:  # importable both as a bare module (main.py) and as the src package
+    from llm_client import complete, Task
+except ImportError:  # pragma: no cover
+    from .llm_client import complete, Task
 
 
 VALID_DOMAINS = ("coding", "system_design", "technical", "behavioral")
@@ -55,45 +46,14 @@ def _call_vllm(
     max_tokens: int = 2200,
     temperature: float = 0.3,
 ) -> Optional[str]:
-    """POST a chat completion to the configured vLLM endpoint."""
-    headers = {"Content-Type": "application/json"}
-    if VLLM_API_KEY:
-        headers["Authorization"] = f"Bearer {VLLM_API_KEY}"
-
-    try:
-        response = requests.post(
-            f"{VLLM_API_URL}/chat/completions",
-            json={
-                "model": VLLM_MODEL,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-                "stream": False,
-            },
-            headers=headers,
-            timeout=VLLM_REQUEST_TIMEOUT,
-        )
-    except requests.exceptions.RequestException as exc:
-        print(f"[interview-agent] vLLM call failed: {exc}", flush=True)
-        return None
-
-    if response.status_code != 200:
-        print(
-            f"[interview-agent] vLLM HTTP {response.status_code}: "
-            f"{response.text[:200]}",
-            flush=True,
-        )
-        return None
-
-    try:
-        data = response.json()
-    except ValueError:
-        return None
-    return (
-        data.get("choices", [{}])[0].get("message", {}).get("content", "") or None
+    """Run a chat completion through the central LLM client (local/OpenRouter)."""
+    return complete(
+        user_prompt,
+        system_prompt=system_prompt,
+        task=Task.INTERVIEW,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        log_prefix="interview-agent",
     )
 
 

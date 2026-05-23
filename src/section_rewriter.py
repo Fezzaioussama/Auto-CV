@@ -8,25 +8,15 @@ existing experience to the offer.
 """
 
 import json
-import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
-import requests
-
-
-VLLM_API_URL = os.environ.get("VLLM_API_URL", "http://127.0.0.1:8002/v1")
-VLLM_MODEL = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-Coder-Next-FP8")
-VLLM_API_KEY = os.environ.get("VLLM_API_KEY")
-VLLM_CONNECT_TIMEOUT = float(os.environ.get("VLLM_CONNECT_TIMEOUT", "10"))
-VLLM_TIMEOUT = float(os.environ.get("VLLM_TIMEOUT", "3600"))
-# (connect, read): fail fast if unreachable, allow a slow model a long read.
-VLLM_REQUEST_TIMEOUT = (VLLM_CONNECT_TIMEOUT, VLLM_TIMEOUT)
-# Section rewrites are independent of each other, so they run concurrently.
-# Cap how many hit the vLLM server at once (it batches, but be polite).
-VLLM_MAX_WORKERS = max(1, int(os.environ.get("VLLM_MAX_WORKERS", "5")))
+try:  # importable both as a bare module (main.py) and as the src package
+    from llm_client import complete, get_max_workers, Task
+except ImportError:  # pragma: no cover
+    from .llm_client import complete, get_max_workers, Task
 
 
 SECTION_REGEX = re.compile(r"\\section\*?\{([^{}]+)\}")
@@ -165,49 +155,16 @@ def _call_vllm(
     system_prompt: str = SYSTEM_PROMPT,
     max_tokens: int = 1500,
     temperature: float = 0.25,
+    task: str = Task.SECTION_REWRITE,
 ) -> Optional[str]:
-    """POST a chat completion to the configured vLLM endpoint."""
-    headers = {"Content-Type": "application/json"}
-    if VLLM_API_KEY:
-        headers["Authorization"] = f"Bearer {VLLM_API_KEY}"
-
-    try:
-        response = requests.post(
-            f"{VLLM_API_URL}/chat/completions",
-            json={
-                "model": VLLM_MODEL,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-                "stream": False,
-            },
-            headers=headers,
-            timeout=VLLM_REQUEST_TIMEOUT,
-        )
-    except requests.exceptions.RequestException as exc:
-        print(f"[section-rewriter] vLLM call failed: {exc}", flush=True)
-        return None
-
-    if response.status_code != 200:
-        print(
-            f"[section-rewriter] vLLM HTTP {response.status_code}: "
-            f"{response.text[:200]}",
-            flush=True,
-        )
-        return None
-
-    try:
-        data = response.json()
-    except ValueError:
-        return None
-    return (
-        data.get("choices", [{}])[0]
-        .get("message", {})
-        .get("content", "")
-        or None
+    """Run a chat completion through the central LLM client (local/OpenRouter)."""
+    return complete(
+        user_prompt,
+        system_prompt=system_prompt,
+        task=task,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        log_prefix="section-rewriter",
     )
 
 
@@ -373,7 +330,7 @@ def rewrite_cv_sections(
         return latex, []
 
     total = len(sections)
-    workers = min(VLLM_MAX_WORKERS, total)
+    workers = min(get_max_workers(), total)
     print(
         f"[section-rewriter] rewriting {total} section(s) in parallel "
         f"(up to {workers} at once)…",
@@ -532,6 +489,7 @@ def propose_additions(
         system_prompt=PROPOSAL_SYSTEM_PROMPT,
         max_tokens=1800,
         temperature=0.3,
+        task=Task.PROPOSAL,
     )
     if not raw:
         return []
