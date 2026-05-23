@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Prep | Auto-CV</title>
+    <meta name="description" content="An AI interview coach that asks questions grounded in your CV and the job offer — coding, system design, technical and behavioral — and reviews your answers with an optimized rewrite.">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Frameworks -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- CodeMirror CSS is loaded lazily from interview.js so a slow/blocked CDN
+         can never delay the page or its buttons. -->
+    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="stylesheet" href="/static/interview.css?v=3">
+</head>
+<body>
+
+    <!-- ===================== NAVBAR ===================== -->
+    <nav class="nav" id="navbar">
+        <div class="shell nav-inner">
+            <a class="brand" href="/">
+                <span class="logo"><i class="bi bi-file-earmark-text-fill"></i></span>
+                <span class="name">Auto<span>CV</span></span>
+            </a>
+            <div class="nav-links">
+                <a class="navlink" href="/#how">How it works</a>
+                <a class="navlink" href="/#app">Optimizer</a>
+                <a class="navlink active" href="/interview">Interview Prep</a>
+                <a class="btn btn-primary" href="#setup"><i class="bi bi-mic"></i> Start practising</a>
+            </div>
+        </div>
+    </nav>
+
+    <span id="top"></span>
+
+    <!-- ===================== HERO ===================== -->
+    <header class="hero hero-interview">
+        <span class="blob b1"></span>
+        <span class="blob b2"></span>
+        <span class="blob b3"></span>
+        <div class="shell hero-inner">
+            <span class="eyebrow reveal in"><span class="dot"></span> AI interview coach &middot; CV-aware &middot; Offer-aware</span>
+            <h1 class="reveal in d1">Walk into the interview <span class="grad-word">already prepared.</span></h1>
+            <p class="lead reveal in d2">Your CV and the job offer become a tailored mock interview — coding, system design, technical and behavioral questions. Answer in a real code editor and get an instant review with an <b>optimized</b> rewrite and complexity analysis.</p>
+            <div class="hero-cta reveal in d3">
+                <a href="#setup" id="heroGenerate" class="btn btn-cta"><i class="bi bi-mic"></i> Generate my questions</a>
+                <a href="/#app" class="btn btn-ghost-light"><i class="bi bi-arrow-left"></i> Back to optimizer</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===================== SETUP ===================== -->
+    <section class="section app-wrap" id="setup">
+        <div class="shell">
+            <div class="section-head reveal">
+                <div class="kicker">Mock interview</div>
+                <h2>Set up your session</h2>
+                <p>We use your CV and the offer to ground every question. Came from the optimizer? They're filled in for you.</p>
+            </div>
+
+            <div class="main-container reveal">
+                <div class="content">
+                    <!-- Inputs -->
+                    <div class="form-section">
+                        <h3><i class="bi bi-sliders"></i> Your context</h3>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold"><i class="bi bi-person-badge"></i> Your CV (LaTeX or plain text)</label>
+                                <textarea class="form-control" id="cvInput" rows="8" placeholder="Paste your CV here (LaTeX is fine — we read through it)..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold"><i class="bi bi-briefcase"></i> Job offer</label>
+                                <textarea class="form-control" id="jobInput" rows="8" placeholder="Paste the job description here..."></textarea>
+                            </div>
+                        </div>
+                        <div id="contextNote" class="ctx-note hidden"></div>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="form-section">
+                        <h3><i class="bi bi-toggles"></i> Tune the questions</h3>
+
+                        <div class="control-block">
+                            <label class="control-label">Seniority level</label>
+                            <div class="seg" id="levelSeg" role="tablist">
+                                <button class="seg-btn active" data-level="">Auto</button>
+                                <button class="seg-btn" data-level="junior">Junior</button>
+                                <button class="seg-btn" data-level="mid">Mid</button>
+                                <button class="seg-btn" data-level="senior">Senior</button>
+                            </div>
+                            <small class="text-muted">"Auto" lets the agent infer the level from your CV and the offer.</small>
+                        </div>
+
+                        <div class="control-block">
+                            <label class="control-label">Question domains</label>
+                            <div class="chips" id="domainChips">
+                                <label class="chip"><input type="checkbox" value="coding" checked> <i class="bi bi-code-square"></i> Coding</label>
+                                <label class="chip"><input type="checkbox" value="system_design" checked> <i class="bi bi-diagram-3"></i> System design</label>
+                                <label class="chip"><input type="checkbox" value="technical" checked> <i class="bi bi-cpu"></i> Technical</label>
+                                <label class="chip"><input type="checkbox" value="behavioral" checked> <i class="bi bi-chat-dots"></i> Behavioral</label>
+                            </div>
+                        </div>
+
+                        <div class="control-block">
+                            <label class="control-label">How many questions: <span id="countValue" class="count-badge">6</span></label>
+                            <input type="range" class="form-range count-range" id="countRange" min="3" max="12" value="6">
+                        </div>
+
+                        <div class="control-block">
+                            <label class="control-label" for="extraInstructions">Steer the agent <span class="text-muted" style="font-weight:500;">(optional)</span></label>
+                            <textarea class="form-control" id="extraInstructions" rows="2" placeholder="e.g. Focus on async Python and scaling; ask harder algorithm questions; include one SQL query challenge…"></textarea>
+                            <small class="text-muted">Add your own instructions to adjust what the agent asks. Used on every (re)generation.</small>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            <button type="button" class="btn btn-success btn-lg" id="generateBtn">
+                                <i class="bi bi-stars"></i> Generate interview questions
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="demoBtn">
+                                <i class="bi bi-shuffle"></i> Load a demo CV + offer
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Session summary -->
+                    <div id="sessionSummary" class="session-summary hidden"></div>
+
+                    <!-- Questions -->
+                    <div id="questionsContainer"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Loading overlay -->
+    <div class="loading" id="loadingIndicator">
+        <div>
+            <div class="spinner"></div>
+            <h4 id="loadingTitle">Designing your interview…</h4>
+            <p>Grounding every question in your CV and the offer</p>
+        </div>
+    </div>
+
+    <!-- ===================== FOOTER ===================== -->
+    <footer class="footer">
+        <div class="shell">
+            <div class="footer-grid">
+                <a class="brand" href="/">
+                    <span class="logo"><i class="bi bi-file-earmark-text-fill"></i></span>
+                    <span class="name">Auto<span style="color:#a5b4fc">CV</span></span>
+                </a>
+                <div class="nav-links">
+                    <a href="/#app">Optimizer</a>
+                    <a href="/interview">Interview Prep</a>
+                    <a href="#top">Back to top <i class="bi bi-arrow-up-short"></i></a>
+                </div>
+            </div>
+            <div class="copyright">
+                AI interview coach &middot; Questions and reviews are grounded in your own CV and the offer.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Local app script loads first and independently, so the page and its
+         buttons work even if external CDNs are slow or blocked. CodeMirror is
+         fetched lazily from inside interview.js (with a plain-textarea fallback). -->
+    <script defer src="/static/interview.js?v=4"></script>
+</body>
+</html>

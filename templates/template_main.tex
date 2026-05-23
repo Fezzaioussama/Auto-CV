@@ -1,0 +1,75 @@
+% Example LaTeX CV
+% This is a sample CV in LaTeX format for testing Auto-CV
+
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage{fontenc}
+\usepackage{url}
+
+% Section formatting
+\titleformat{\section}
+  {\Large\bfseries\uppercase}{\thesection}{1em}{}
+
+% Line spacing
+\onehalfspacing
+
+% Document metadata
+\hypersetup{colorlinks=true, urlcolor=blue, linkcolor=blue}
+
+\begin{document}
+
+\title{John Doe}
+\author{john.doe@example.com | +1 202 555 0100 | San Francisco, CA}
+\date{\today}
+\maketitle
+\vspace{-1cm}
+
+\section{SUMMARY}
+Experienced software developer with 5+ years of experience in building scalable web applications. Passionate about clean code, software architecture, and continuous learning. Proven track record of delivering high-quality software products on time and within budget.
+
+\section{EXPERIENCE}
+Senior Software Engineer, Tech Company, Inc.\hfill 2020 - Present
+\textbf{Led} a team of 5 developers in building a distributed microservices architecture.
+\textbf{Designed} and implemented RESTful APIs handling 10K+ requests per second.
+\textbf{Optimized} database queries reducing response times by 40\%.
+\textbf{Mentored} junior developers and conducted code reviews.
+
+Software Developer, Startup LLC\hfill 2018 - 2020
+\textbf{Developed} a full-stack web application using React and Node.js.
+\textbf{Integrated} third-party APIs including payment gateways and social media.
+\textbf{Deployed} application to AWS cloud using Docker containers.
+\textbf{Collaborated} with designers to implement pixel-perfect UI designs.
+
+\section{EDUCATION}
+Master of Science in Computer Science, University\hfill 2016 - 2018
+Bachelor of Science in Software Engineering, University\hfill 2012 - 2016
+GPA: 3.8/4.0
+
+\section{SKILLS}
+\begin{description}[noitemsep,nosep]
+\item[\textbf{Programming Languages}] Python, Java, JavaScript, C++, SQL, MySQL, PostgreSQL, MongoDB
+\item[\textbf{Frameworks \& Libraries}] Django, Flask, React, Node.js, Docker, AWS, Git, Linux
+\end{description}
+
+\section{PROJECTS}
+E-commerce Platform\hfill 2021
+Technologies: React, Node.js, MongoDB
+Description: Built a full-stack e-commerce platform with payment integration.
+
+Data Analysis Tool\hfill 2020
+Technologies: Python, Pandas, D3.js
+Description: Created a data visualization tool for business analytics.
+
+\section{ACHIEVEMENTS}
+\begin{itemize}[noitemsep,topsep=0pt,leftmargin=*]
+\item Received "Employee of the Quarter" award in 2022
+\item Reduced production bugs by 35\% through improved testing protocols
+\item Speaker at Tech Conference 2021 on microservices architecture
+\end{itemize}
+
+\end{document}
