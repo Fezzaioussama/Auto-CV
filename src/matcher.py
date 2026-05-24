@@ -410,6 +410,92 @@ def _job_description_to_text(job_description: Union[str, Dict]) -> str:
     return "\n".join(parts)
 
 
+_REQUIREMENT_STOPWORDS = {
+    "and", "or", "the", "a", "an", "of", "to", "in", "with", "for", "on", "at",
+    "is", "are", "be", "as", "by", "from", "you", "your", "we", "our", "will",
+    "have", "has", "experience", "years", "year", "plus", "strong", "ability",
+    "work", "working", "team", "skills", "knowledge", "good", "excellent",
+}
+
+
+def _significant_words(text: str) -> List[str]:
+    """Lowercase content words from a requirement line, minus filler."""
+    words = re.findall(r"[a-zA-Z][a-zA-Z0-9+#.\-]{2,}", (text or "").lower())
+    return [w for w in words if w not in _REQUIREMENT_STOPWORDS]
+
+
+def _requirement_is_covered(requirement: str, cv_lower: str) -> bool:
+    """Heuristic: a requirement is 'covered' when most of its content words
+    appear somewhere in the CV text."""
+    words = _significant_words(requirement)
+    if not words:
+        return False
+    hits = sum(1 for w in words if w in cv_lower)
+    return (hits / len(words)) >= 0.5
+
+
+_STANDARD_SECTIONS = {
+    "summary": ["summary", "profile", "objective", "profil"],
+    "experience": ["experience", "expérience", "employment", "work history"],
+    "education": ["education", "formation", "degree", "university", "école"],
+    "skills": ["skills", "compétences", "competencies", "technologies"],
+}
+
+
+def _detect_missing_sections(cv_lower: str) -> List[str]:
+    """Standard CV sections an ATS expects but the CV seems to lack."""
+    missing = []
+    for label, keywords in _STANDARD_SECTIONS.items():
+        if not any(keyword in cv_lower for keyword in keywords):
+            missing.append(label)
+    return missing
+
+
+def _build_ats_breakdown(
+    matched: List[str],
+    missing: List[str],
+    job_description: Union[str, Dict],
+    cv_text: str,
+    recommendations: List[str],
+) -> Dict:
+    """A recruiter-style breakdown that replaces the single opaque score:
+    matched/missing keywords, requirement coverage, weak sections, and the
+    highest-leverage fixes to make next."""
+    cv_lower = (cv_text or "").lower()
+
+    requirements: List[str] = []
+    if isinstance(job_description, dict):
+        requirements = [str(r) for r in (job_description.get("requirements") or [])]
+
+    requirements_covered = [
+        {"requirement": req, "covered": _requirement_is_covered(req, cv_lower)}
+        for req in requirements
+    ]
+    covered_count = sum(1 for r in requirements_covered if r["covered"])
+    weak_sections = _detect_missing_sections(cv_lower)
+
+    priority: List[str] = []
+    for skill in missing[:4]:
+        priority.append(
+            f"Surface '{skill}' if you have it (add to Skills or evidence it in a bullet)."
+        )
+    for label in weak_sections:
+        priority.append(f"Add a {label.capitalize()} section — ATS parsers look for it.")
+    for rec in recommendations[:3]:
+        if rec and rec not in priority:
+            priority.append(rec)
+
+    return {
+        "matched_keywords": matched,
+        "missing_keywords": missing,
+        "requirements_total": len(requirements),
+        "requirements_covered_count": covered_count,
+        "requirements_covered": requirements_covered,
+        "weak_sections": weak_sections,
+        "priority_improvements": priority[:8],
+    }
+
+
 def _normalize_analysis(analysis: Dict, job_description: Union[str, Dict]) -> Dict:
     """Make matcher output compatible with the Flask frontend."""
     normalized = dict(analysis or {})
@@ -466,6 +552,12 @@ def _normalize_analysis(analysis: Dict, job_description: Union[str, Dict]) -> Di
                 flattened.append(str(value))
         recommendations = flattened
     normalized["recommendations"] = recommendations
+
+    # Detailed ATS breakdown (computed while we still have the CV text).
+    normalized["ats"] = _build_ats_breakdown(
+        matched, missing, job_description, cv_text, recommendations
+    )
+
     normalized.pop("_cv_text", None)
 
     return normalized
@@ -781,9 +873,12 @@ def analyze_cv(cv_content: str, job_description: Union[str, Dict],
 
 
 def optimize_cv_for_job(cv_content: str, job_description: Union[str, Dict],
-                        api_key: Optional[str] = None) -> Dict:
+                        api_key: Optional[str] = None, language: str = "en") -> Dict:
     """
     Analyze a CV and return lightweight optimized sections for rendering.
+
+    ``language`` (``en`` | ``fr`` | ``es``) controls the language of the
+    rewritten prose and proposals.
     """
     job_text = _job_description_to_text(job_description)
     matcher = CVMatcher(api_key=api_key)
@@ -797,6 +892,7 @@ def optimize_cv_for_job(cv_content: str, job_description: Union[str, Dict],
     # same time instead of back-to-back.
     rewritten_latex = cv_content
     rewritten_titles: List[str] = []
+    section_diffs: List[Dict] = []
     proposed_additions: List[Dict] = []
 
     def _do_modifications():
@@ -804,11 +900,15 @@ def optimize_cv_for_job(cv_content: str, job_description: Union[str, Dict],
 
     def _do_rewrite():
         from section_rewriter import rewrite_cv_sections
-        return rewrite_cv_sections(cv_content, job_description, job_text, analysis)
+        return rewrite_cv_sections(
+            cv_content, job_description, job_text, analysis, language=language
+        )
 
     def _do_proposals():
         from section_rewriter import propose_additions
-        return propose_additions(cv_content, job_description, job_text, analysis)
+        return propose_additions(
+            cv_content, job_description, job_text, analysis, language=language
+        )
 
     print(
         "[optimize-cv] step 2/2: modifications + section rewrites + proposals "
@@ -824,7 +924,7 @@ def optimize_cv_for_job(cv_content: str, job_description: Union[str, Dict],
         # raise; the rewrite/proposal pair falls back to the rule-based path.
         modifications = f_mod.result()
         try:
-            rewritten_latex, rewritten_titles = f_rewrite.result()
+            rewritten_latex, rewritten_titles, section_diffs = f_rewrite.result()
             proposed_additions = f_proposals.result()
         except Exception as exc:  # noqa: BLE001
             print(f"[matcher] section-by-section rewrite failed: {exc}", flush=True)
@@ -882,5 +982,6 @@ def optimize_cv_for_job(cv_content: str, job_description: Union[str, Dict],
         "optimized_sections": optimized_sections,
         "optimized_latex": optimized_latex,
         "rewritten_sections": rewritten_titles,
+        "section_diffs": section_diffs,
         "proposed_additions": proposed_additions,
     }

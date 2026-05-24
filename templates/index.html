@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auto-CV | AI-Powered LaTeX CV Optimizer</title>
     <meta name="description" content="Tailor your LaTeX CV to any job offer in seconds. AI-powered skill matching, rewriting and PDF export.">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +15,8 @@
     <!-- Frameworks -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="stylesheet" href="/static/style.css?v=4">
+    <link rel="stylesheet" href="/static/features.css?v=1">
 </head>
 <body>
 
@@ -22,15 +24,15 @@
     <nav class="nav" id="navbar">
         <div class="shell nav-inner">
             <a class="brand" href="#top">
-                <span class="logo"><i class="bi bi-file-earmark-text-fill"></i></span>
+                <span class="logo logo-image"><img src="/static/assets/autocv-logo.png" alt="" aria-hidden="true"></span>
                 <span class="name">Auto<span>CV</span></span>
             </a>
             <div class="nav-links">
-                <a class="navlink" href="#how">How it works</a>
-                <a class="navlink" href="#features">Features</a>
                 <a class="navlink" href="#app">Optimizer</a>
                 <a class="navlink" href="/interview">Interview Prep</a>
-                <a class="btn btn-primary" href="#app"><i class="bi bi-rocket-takeoff"></i> Launch</a>
+                <a class="navlink" href="/workspace">Workspace</a>
+                <a class="navlink" href="#how">How it works</a>
+                <span id="navAuth" class="nav-auth"></span>
             </div>
         </div>
     </nav>
@@ -38,64 +40,63 @@
     <span id="top"></span>
 
     <!-- ===================== HERO ===================== -->
-    <header class="hero">
-        <span class="blob b1"></span>
-        <span class="blob b2"></span>
-        <span class="blob b3"></span>
+    <header class="hero hero-optimizer">
         <div class="shell hero-inner">
-            <span class="eyebrow reveal in"><span class="dot"></span> AI-powered &middot; LaTeX-native &middot; ATS-friendly</span>
-            <h1 class="reveal in d1">Tailor your CV to <span class="grad-word">any job offer</span><br>in seconds.</h1>
-            <p class="lead reveal in d2">Paste a job description, drop in your LaTeX CV, and let Auto-CV match your skills, rephrase your experience to the role, and export a polished PDF — without inventing a single fact.</p>
-            <div class="hero-cta reveal in d3">
-                <a href="#app" class="btn btn-cta"><i class="bi bi-magic"></i> Optimize my CV</a>
-                <a href="#how" class="btn btn-ghost-light"><i class="bi bi-play-circle"></i> See how it works</a>
+            <div class="hero-copy">
+                <span class="eyebrow reveal in"><span class="dot"></span> LaTeX-native CV optimization</span>
+                <h1 class="reveal in d1">Adapt your CV to the role without losing your facts.</h1>
+                <p class="lead reveal in d2">Paste the offer, upload your LaTeX CV, and review the matched skills, rewritten sections, optional additions, and PDF preview in one workspace.</p>
+                <div class="hero-cta reveal in d3">
+                    <a href="#app" class="btn btn-cta"><i class="bi bi-arrow-down-circle"></i> Open optimizer</a>
+                    <a href="/interview" class="btn btn-ghost-light"><i class="bi bi-mic"></i> Interview prep</a>
+                </div>
             </div>
-            <div class="hero-trust reveal in d3">
-                <div><b>3 steps</b> from offer to PDF</div>
-                <div><b>0</b> facts invented</div>
-                <div><b>LaTeX</b> in, LaTeX out</div>
+            <div class="hero-panel reveal in d2" aria-label="Auto-CV workflow summary">
+                <div class="hero-panel-top">
+                    <span>Workspace</span>
+                    <span class="panel-brand-cluster">
+                        <img class="panel-logo" src="/static/assets/autocv-logo.png" alt="" aria-hidden="true">
+                        <i class="bi bi-stars"></i>
+                    </span>
+                </div>
+                <div class="status-rail">
+                    <div class="status-row active">
+                        <span class="status-dot"></span>
+                        <div>
+                            <strong>Offer analysis</strong>
+                            <small>Skills, requirements, qualifications</small>
+                        </div>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-dot"></span>
+                        <div>
+                            <strong>CV matching</strong>
+                            <small>Coverage and missing signals</small>
+                        </div>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-dot"></span>
+                        <div>
+                            <strong>Review and export</strong>
+                            <small>Editable LaTeX with PDF preview</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-metrics">
+                    <div><b>3</b><span>guided steps</span></div>
+                    <div><b>0</b><span>facts invented</span></div>
+                </div>
             </div>
         </div>
     </header>
-
-    <!-- ===================== HOW IT WORKS ===================== -->
-    <section class="section" id="how">
-        <div class="shell">
-            <div class="section-head reveal">
-                <div class="kicker">How it works</div>
-                <h2>From job offer to tailored PDF</h2>
-                <p>A guided three-step flow. You stay in control of every change.</p>
-            </div>
-            <div class="steps-grid">
-                <div class="step-card reveal">
-                    <div class="step-num">STEP 01</div>
-                    <div class="step-icon"><i class="bi bi-clipboard-data"></i></div>
-                    <h3>Analyze the offer</h3>
-                    <p>Paste the job description. Auto-CV extracts the key skills, requirements and qualifications it's really asking for.</p>
-                </div>
-                <div class="step-card reveal d1">
-                    <div class="step-num">STEP 02</div>
-                    <div class="step-icon"><i class="bi bi-person-vcard"></i></div>
-                    <h3>Match your CV</h3>
-                    <p>Drop in your LaTeX CV. See your match score, which skills land, and what the offer wants but you're missing.</p>
-                </div>
-                <div class="step-card reveal d2">
-                    <div class="step-num">STEP 03</div>
-                    <div class="step-icon"><i class="bi bi-stars"></i></div>
-                    <h3>Optimize &amp; export</h3>
-                    <p>Sections get rephrased to the role's wording, suggestions are proposed, and you export a clean PDF — or copy the LaTeX.</p>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- ===================== APP ===================== -->
     <section class="section app-wrap" id="app">
         <div class="shell">
             <div class="section-head reveal">
-                <div class="kicker" id="features">The optimizer</div>
+                <div class="kicker" id="features">Optimizer</div>
                 <h2>Build your tailored CV</h2>
-                <p>Follow the steps below — the workflow unlocks as you go.</p>
+                <p>Move from offer text to a reviewed PDF with clear checkpoints.</p>
             </div>
 
             <!-- Stepper -->
@@ -121,9 +122,10 @@
                     <!-- Upload Section -->
                     <div class="form-section">
                         <h3><i class="bi bi-cloud-upload"></i> Upload Job Description</h3>
-                        <div class="drop-zone" id="jobDropZone">
-                            <i class="bi bi-file-text" style="font-size: 2.2rem; color: var(--brand-600); margin-bottom: 10px; display:inline-block;"></i>
-                            <p class="mb-2 fw-semibold">Drag &amp; drop your job description file here or click to upload</p>
+                        <div class="drop-zone" id="jobDropZone" role="button" tabindex="0" aria-label="Upload a job description text file">
+                            <input class="visually-hidden" type="file" id="jobFileInput" accept=".txt,.md,.tex,text/plain">
+                            <span class="drop-icon"><i class="bi bi-file-text"></i></span>
+                            <p class="mb-2 fw-semibold">Drop a job description file here or click to upload</p>
                             <small class="text-muted">or paste the text below</small>
                         </div>
                         <textarea class="form-control mt-3" id="jobDescription" rows="6" placeholder="Paste your job description here..."></textarea>
@@ -168,12 +170,14 @@
 
                     <!-- CV Upload Section -->
                     <div class="form-section hidden" id="cvSection">
-                        <h3><i class="bi bi-person-badge"></i> Upload Your CV (LaTeX)</h3>
-                        <div class="drop-zone" id="cvDropZone">
-                            <i class="bi bi-file-code" style="font-size: 2.2rem; color: var(--brand-600); margin-bottom: 10px; display:inline-block;"></i>
-                            <p class="mb-2 fw-semibold">Drag &amp; drop your LaTeX CV file here or click to upload</p>
-                            <small class="text-muted">or paste the LaTeX code below</small>
+                        <h3><i class="bi bi-person-badge"></i> Upload Your CV</h3>
+                        <div class="drop-zone" id="cvDropZone" role="button" tabindex="0" aria-label="Upload a CV file (LaTeX, PDF or Word)">
+                            <input class="visually-hidden" type="file" id="cvFileInput" accept=".tex,.txt,.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+                            <span class="drop-icon"><i class="bi bi-file-earmark-arrow-up"></i></span>
+                            <p class="mb-2 fw-semibold">Drop your CV here or click to upload</p>
+                            <small class="text-muted">LaTeX (.tex), PDF or Word (.docx) — or paste LaTeX below</small>
                         </div>
+                        <div id="cvExtractStatus" class="mb-2"></div>
                         <textarea class="form-control mt-3" id="cvLatex" rows="10" placeholder="Paste your LaTeX CV code here..."></textarea>
                         <div class="d-flex flex-wrap gap-2 mt-3">
                             <button class="btn btn-primary" onclick="uploadCV()">
@@ -185,9 +189,23 @@
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="action-buttons text-center hidden" id="actionButtons">
-                        <button class="btn btn-success btn-lg" onclick="optimizeCV()">
+                    <!-- Optimization options + Action -->
+                    <div class="action-buttons hidden" id="actionButtons">
+                        <div class="optimize-options">
+                            <div class="opt-field">
+                                <label for="cvLanguage"><i class="bi bi-translate"></i> Output language</label>
+                                <select class="form-select" id="cvLanguage">
+                                    <option value="en" selected>English</option>
+                                    <option value="fr">Français</option>
+                                    <option value="es">Español</option>
+                                </select>
+                            </div>
+                            <div class="opt-field">
+                                <label for="cvTemplate"><i class="bi bi-palette"></i> Template (for PDF/Word uploads)</label>
+                                <select class="form-select" id="cvTemplate"></select>
+                            </div>
+                        </div>
+                        <button class="btn btn-success btn-lg mt-3" onclick="optimizeCV()">
                             <i class="bi bi-magic"></i> Optimize CV for This Job
                         </button>
                     </div>
@@ -204,8 +222,8 @@
                                     <svg viewBox="0 0 132 132">
                                         <defs>
                                             <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stop-color="#6366f1"/>
-                                                <stop offset="100%" stop-color="#a855f7"/>
+                                                <stop offset="0%" stop-color="#2563eb"/>
+                                                <stop offset="100%" stop-color="#0f766e"/>
                                             </linearGradient>
                                         </defs>
                                         <circle class="ring-bg" cx="66" cy="66" r="56"></circle>
@@ -255,6 +273,41 @@
                             <div id="recommendationsContainer"></div>
                         </div>
 
+                        <!-- ATS Breakdown -->
+                        <div class="form-section" id="atsSection">
+                            <h4><i class="bi bi-clipboard2-check"></i> ATS breakdown</h4>
+                            <p class="text-muted mb-3">How an applicant tracking system is likely to read your CV against this offer.</p>
+                            <div class="stats-container" id="atsStats"></div>
+                            <div class="ats-grid mt-3">
+                                <div>
+                                    <h6 class="mb-2"><i class="bi bi-list-check"></i> Requirements covered</h6>
+                                    <ul id="atsRequirements" class="ats-reqs"></ul>
+                                </div>
+                                <div>
+                                    <h6 class="mb-2"><i class="bi bi-flag"></i> Priority improvements</h6>
+                                    <ul id="atsPriorities" class="ats-priorities"></ul>
+                                    <div id="atsWeakSections" class="mt-2"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Review changes (before/after diff + per-section editing) -->
+                        <div class="form-section" id="reviewSection">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                                <h4 class="mb-0"><i class="bi bi-vr"></i> Review changes</h4>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button class="btn btn-outline-success btn-sm" id="acceptAllBtn" type="button">
+                                        <i class="bi bi-check2-all"></i> Accept all
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" id="rejectAllBtn" type="button">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Reject all
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-muted mb-3">Each rewritten section is shown before vs. after. Accept, reject, or edit — your choices rebuild the LaTeX below. Nothing is applied until you decide.</p>
+                            <div id="reviewContainer"></div>
+                        </div>
+
                         <!-- LaTeX Editor and Preview -->
                         <div class="form-section">
                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -281,7 +334,7 @@
                                     <h5 class="mb-0"><i class="bi bi-file-pdf"></i> PDF Preview</h5>
                                     <small class="text-muted" id="pdfPreviewStatus">No PDF rendered yet.</small>
                                 </div>
-                                <iframe id="pdfPreviewFrame" title="PDF preview" class="w-100 hidden" style="height: 700px; border: 1px solid var(--line); border-radius: 12px; background: white;"></iframe>
+                                <iframe id="pdfPreviewFrame" title="PDF preview" class="w-100 hidden" style="height: 700px; border: 1px solid var(--line); border-radius: 8px; background: white;"></iframe>
                             </div>
                         </div>
 
@@ -291,7 +344,67 @@
                             <p class="text-muted mb-3">New sections the offer values but your CV is missing. Placeholders like <code>[your project]</code> mark anything only you can fill in — nothing is invented.</p>
                             <div id="proposedAdditionsContainer"></div>
                         </div>
+
+                        <!-- Cover letter & outreach -->
+                        <div class="form-section" id="coverLetterSection">
+                            <h4><i class="bi bi-envelope-paper"></i> Cover letter &amp; outreach</h4>
+                            <p class="text-muted mb-3">Generate application text grounded in your CV — nothing invented.</p>
+                            <div class="cover-kinds mb-3" id="coverKinds">
+                                <label><input type="checkbox" value="cover_letter" checked> Cover letter</label>
+                                <label><input type="checkbox" value="recruiter_message"> Recruiter message</label>
+                                <label><input type="checkbox" value="linkedin_message"> LinkedIn note</label>
+                                <label><input type="checkbox" value="email"> Application email</label>
+                            </div>
+                            <button class="btn btn-primary btn-sm" id="generateCoverBtn" type="button">
+                                <i class="bi bi-magic"></i> Generate outreach
+                            </button>
+                            <div id="coverLetterResults" class="mt-3"></div>
+                        </div>
+
+                        <!-- Save to workspace -->
+                        <div class="form-section" id="saveSection">
+                            <h4><i class="bi bi-bookmark-plus"></i> Save to your workspace</h4>
+                            <p class="text-muted mb-3">Keep this job and tailored CV so you can revisit, compare versions, and reuse later.</p>
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <input class="form-control" style="max-width:260px;" id="saveCvName" placeholder="CV name (e.g. Backend — Acme)">
+                                <button class="btn btn-success btn-sm" id="saveWorkspaceBtn" type="button">
+                                    <i class="bi bi-save"></i> Save job + CV
+                                </button>
+                                <span id="saveStatus" class="text-muted"></span>
+                            </div>
+                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== HOW IT WORKS ===================== -->
+    <section class="section" id="how">
+        <div class="shell">
+            <div class="section-head reveal">
+                <div class="kicker">How it works</div>
+                <h2>From offer to tailored PDF</h2>
+                <p>A guided three-step flow. You stay in control of every change.</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step-card reveal">
+                    <div class="step-num">STEP 01</div>
+                    <div class="step-icon"><i class="bi bi-clipboard-data"></i></div>
+                    <h3>Analyze the offer</h3>
+                    <p>Auto-CV extracts the key skills, requirements and qualifications the role is asking for.</p>
+                </div>
+                <div class="step-card reveal d1">
+                    <div class="step-num">STEP 02</div>
+                    <div class="step-icon"><i class="bi bi-person-vcard"></i></div>
+                    <h3>Match your CV</h3>
+                    <p>See your match score, which skills land, and which signals are still missing.</p>
+                </div>
+                <div class="step-card reveal d2">
+                    <div class="step-num">STEP 03</div>
+                    <div class="step-icon"><i class="bi bi-file-earmark-pdf"></i></div>
+                    <h3>Review and export</h3>
+                    <p>Edit the optimized LaTeX, render a PDF preview, then download or copy the final source.</p>
                 </div>
             </div>
         </div>
@@ -301,18 +414,20 @@
     <div class="loading" id="loadingIndicator">
         <div>
             <div class="spinner"></div>
-            <h4>Analyzing and optimizing your CV...</h4>
-            <p>This may take a few moments</p>
+            <h4 id="loadingTitle">Analyzing your CV...</h4>
+            <p id="loadingMessage">This may take a few moments</p>
         </div>
     </div>
+
+    <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
 
     <!-- ===================== FOOTER ===================== -->
     <footer class="footer">
         <div class="shell">
             <div class="footer-grid">
                 <a class="brand" href="#top">
-                    <span class="logo"><i class="bi bi-file-earmark-text-fill"></i></span>
-                    <span class="name">Auto<span style="color:#a5b4fc">CV</span></span>
+                    <span class="logo logo-image"><img src="/static/assets/autocv-logo.png" alt="" aria-hidden="true"></span>
+                    <span class="name">Auto<span style="color:#93c5fd">CV</span></span>
                 </a>
                 <div class="nav-links">
                     <a href="#how">How it works</a>
@@ -327,7 +442,10 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/script.js?v=7"></script>
-    <script src="/static/animations.js?v=1"></script>
+    <script src="/static/csrf.js?v=1"></script>
+    <script src="/static/script.js?v=8"></script>
+    <script src="/static/review.js?v=1"></script>
+    <script src="/static/features.js?v=1"></script>
+    <script src="/static/animations.js?v=2"></script>
 </body>
 </html>

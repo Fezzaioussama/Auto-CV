@@ -1,5 +1,5 @@
 /**
- * Auto-CV — UI animation layer.
+ * Auto-CV - UI animation layer.
  * Pure presentation: scroll reveals, navbar state, button ripples,
  * count-up stats, the circular match gauge, and the live stepper.
  * It observes elements that script.js already updates, so no app
@@ -15,7 +15,8 @@
         setupReveal();
         setupRipple();
         watchMatchScore();
-        watchJobAnalysis();
+        watchWorkflowState();
+        document.addEventListener('autocv:state-change', updateStepper);
         updateStepper();
     }
 
@@ -123,8 +124,8 @@
         mo.observe(bar, { attributes: true, attributeFilter: ['style'] });
     }
 
-    /* ---------------- Job analysis counters ---------------- */
-    function watchJobAnalysis() {
+    /* ---------------- Workflow counters + stepper ---------------- */
+    function watchWorkflowState() {
         const panel = document.getElementById('jobAnalysis');
         if (!panel) return;
         let wasHidden = panel.classList.contains('hidden');
@@ -139,7 +140,12 @@
             wasHidden = hidden;
             updateStepper();
         });
-        mo.observe(panel, { attributes: true, attributeFilter: ['class'] });
+        ['jobAnalysis', 'cvSection', 'actionButtons', 'resultsSection'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) {
+                mo.observe(el, { attributes: true, attributeFilter: ['class'] });
+            }
+        });
     }
 
     /* ---------------- Stepper progress ---------------- */
@@ -152,11 +158,14 @@
             return el && !el.classList.contains('hidden');
         };
         const resultsReady = visible('resultsSection');
+        const optimizeReady = visible('actionButtons');
         const cvReady = visible('cvSection') || visible('jobAnalysis');
 
         let current; // the active step
         const done = []; // completed steps
         if (resultsReady) {
+            current = 3; done.push(1, 2);
+        } else if (optimizeReady) {
             current = 3; done.push(1, 2);
         } else if (cvReady) {
             current = 2; done.push(1);

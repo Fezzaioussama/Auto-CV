@@ -152,7 +152,7 @@
     border-radius: 999px;
 }
 .q-domain.coding { background: #eef2ff; color: var(--brand-700); }
-.q-domain.system_design { background: #f3e8ff; color: var(--violet-600); }
+.q-domain.system_design { background: #ecfdf5; color: var(--violet-600); }
 .q-domain.technical { background: #ecfeff; color: #0e7490; }
 .q-domain.behavioral { background: #fff7ed; color: #c2410c; }
 .q-level {

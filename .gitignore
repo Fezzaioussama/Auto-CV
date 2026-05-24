@@ -31,6 +31,11 @@ venv/
 env/
 ENV/
 
+# Instance folder (local SQLite DB, uploads) — never commit user data
+instance/
+*.db
+*.sqlite3
+
 # Testing / coverage / type-checking caches
 .pytest_cache/
 .mypy_cache/

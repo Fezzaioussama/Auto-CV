@@ -1,0 +1,70 @@
+/* Styles for the account/workspace/ATS/review/cover-letter features.
+   Self-contained with sensible fallbacks so it never depends on style.css. */
+
+/* --- Nav auth slot --- */
+.nav-auth { display: inline-flex; align-items: center; gap: 10px; }
+.nav-user { font-weight: 600; font-size: 0.92rem; color: var(--muted, #475569); }
+
+/* --- Optimize options (language + template) --- */
+.optimize-options {
+    display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
+    margin-bottom: 4px;
+}
+.optimize-options .opt-field { display: flex; flex-direction: column; gap: 6px; min-width: 220px; text-align: left; }
+.optimize-options label { font-weight: 600; font-size: 0.88rem; }
+
+/* --- ATS breakdown --- */
+.ats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 760px) { .ats-grid { grid-template-columns: 1fr; } }
+.ats-reqs, .ats-priorities { list-style: none; padding: 0; margin: 0; }
+.ats-reqs li, .ats-priorities li {
+    display: flex; gap: 8px; align-items: flex-start;
+    padding: 6px 0; font-size: 0.92rem; border-bottom: 1px solid #eef1f6;
+}
+.ats-reqs li.covered i { color: #16a34a; }
+.ats-reqs li.uncovered i { color: #cbd5e1; }
+.ats-weak { margin-top: 8px; font-size: 0.9rem; }
+
+/* --- Before/after review --- */
+.review-card {
+    border: 1px solid var(--line, #e5e9f0); border-radius: var(--radius, 8px); padding: 16px;
+    margin-bottom: 14px; background: #fff;
+}
+.review-card.is-rejected { opacity: 0.7; }
+.review-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.review-kind {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
+    background: #eff6ff; color: var(--brand-700, #1e40af); padding: 2px 8px; border-radius: 999px; margin-left: 8px;
+}
+.review-diff { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 760px) { .review-diff { grid-template-columns: 1fr; } }
+.diff-col h6 { font-size: 0.78rem; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
+.diff-col.before pre { background: #fff5f5; border: 1px solid #fed7d7; }
+.diff-col.after pre { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.diff-col pre {
+    white-space: pre-wrap; word-break: break-word; font-size: 0.82rem;
+    padding: 10px; border-radius: var(--radius, 8px); max-height: 240px; overflow: auto; margin: 0;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+.review-edit { margin-top: 10px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.85rem; }
+.review-state { margin-top: 8px; font-size: 0.85rem; color: #475569; }
+
+/* --- Cover letter --- */
+.cover-kinds { display: flex; flex-wrap: wrap; gap: 16px; }
+.cover-kinds label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.92rem; }
+.cover-card { border: 1px solid var(--line, #e5e9f0); border-radius: var(--radius, 8px); padding: 14px; margin-bottom: 12px; }
+.cover-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.cover-card textarea { font-size: 0.9rem; }
+
+/* --- Workspace --- */
+.ws-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+@media (max-width: 860px) { .ws-grid { grid-template-columns: 1fr; } }
+.ws-item {
+    border: 1px solid var(--line, #e5e9f0); border-radius: var(--radius, 8px); padding: 14px 16px;
+    margin-bottom: 12px; background: #fff;
+}
+.ws-item-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.ws-meta { font-size: 0.82rem; color: #64748b; }
+.ws-versions { margin-top: 10px; border-top: 1px dashed #e5e9f0; padding-top: 10px; }
+.ws-version { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 5px 0; font-size: 0.88rem; }
+.ws-empty { color: #64748b; padding: 20px; text-align: center; }

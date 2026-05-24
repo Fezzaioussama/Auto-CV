@@ -7,6 +7,7 @@
 const editors = {};        // qid -> CodeMirror instance (coding questions)
 const questionData = {};    // qid -> question object (sent back to the reviewer)
 let selectedLevel = '';     // '', 'junior', 'mid', 'senior'
+const toastRegion = document.getElementById('toastRegion');
 
 // CodeMirror language -> mode mapping
 const CM_MODES = {
@@ -151,6 +152,38 @@ function hideLoading() {
     document.getElementById('loadingIndicator').classList.remove('show');
 }
 
+function notify(type, title, message) {
+    if (!toastRegion) {
+        console[type === 'danger' ? 'error' : 'log'](`${title}: ${message || ''}`);
+        return;
+    }
+
+    const icon = {
+        success: 'bi-check2-circle',
+        warning: 'bi-exclamation-triangle',
+        danger: 'bi-x-circle'
+    }[type] || 'bi-info-circle';
+    const toast = document.createElement('div');
+    toast.className = `toast-card ${type || 'info'}`;
+    toast.innerHTML = `
+        <span class="toast-icon"><i class="bi ${icon}"></i></span>
+        <span class="toast-copy">
+            <strong>${escapeHtml(title || 'Notice')}</strong>
+            ${message ? `<span>${escapeHtml(message)}</span>` : ''}
+        </span>
+        <button type="button" class="toast-close" aria-label="Dismiss notification">
+            <i class="bi bi-x-lg"></i>
+        </button>`;
+
+    const removeToast = () => {
+        toast.classList.add('closing');
+        setTimeout(() => toast.remove(), 220);
+    };
+    toast.querySelector('.toast-close').addEventListener('click', removeToast);
+    toastRegion.appendChild(toast);
+    setTimeout(removeToast, type === 'danger' ? 7000 : 4200);
+}
+
 function escapeHtml(str) {
     return String(str == null ? '' : str)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -166,11 +199,11 @@ async function generateQuestions() {
     const count = parseInt(document.getElementById('countRange').value, 10);
 
     if (!cv && !job) {
-        alert('Add your CV and/or the job offer first.');
+        notify('warning', 'Context missing', 'Add your CV and/or the job offer first.');
         return;
     }
     if (!domains.length) {
-        alert('Pick at least one question domain.');
+        notify('warning', 'No domains selected', 'Pick at least one question domain.');
         return;
     }
 
@@ -193,8 +226,9 @@ async function generateQuestions() {
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error || 'Request failed');
         renderSession(data);
+        notify('success', 'Interview ready', `${data.questions.length} questions generated.`);
     } catch (err) {
-        alert('Could not generate questions: ' + err.message);
+        notify('danger', 'Question generation failed', err.message);
     } finally {
         hideLoading();
     }
@@ -332,7 +366,10 @@ function getAnswer(q) {
 async function requestReview(qid) {
     const q = questionData[qid];
     const answer = getAnswer(q).trim();
-    if (!answer) { alert('Write an answer or some code first.'); return; }
+    if (!answer) {
+        notify('warning', 'Answer missing', 'Write an answer or some code first.');
+        return;
+    }
 
     const lang = q.domain === 'coding'
         ? (document.getElementById(`lang-${qid}`)?.value || q.language || '')
@@ -352,8 +389,9 @@ async function requestReview(qid) {
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error || 'Request failed');
         renderReview(qid, data.review);
+        notify('success', 'Review complete', 'Feedback is ready below your answer.');
     } catch (err) {
-        alert('Review failed: ' + err.message);
+        notify('danger', 'Review failed', err.message);
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Re-review';
@@ -445,6 +483,9 @@ function copyCode(codeId, btn) {
         const original = btn.innerHTML;
         btn.innerHTML = '<i class="bi bi-check2"></i> Copied';
         setTimeout(() => { btn.innerHTML = original; }, 1500);
+        notify('success', 'Copied', 'Optimized code copied to the clipboard.');
+    }).catch(() => {
+        notify('danger', 'Copy failed', 'Your browser blocked clipboard access.');
     });
 }
 

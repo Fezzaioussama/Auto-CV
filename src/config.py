@@ -1,0 +1,136 @@
+"""Application configuration for Auto-CV.
+
+All deployment-sensitive behaviour is driven by environment variables (loaded
+from the project-root ``.env``) so the same code runs safely as a local tool or
+a public web app. Nothing here imports Flask app state, so it can be read from
+anywhere without side effects.
+
+The golden rules for a public deployment:
+
+* ``FLASK_DEBUG`` defaults to **off** (the Werkzeug debugger is remote code
+  execution if exposed).
+* ``SECRET_KEY`` must be set in production; a dev-only fallback is generated and
+  loudly warned about so sessions never silently use a shared key.
+* Uploads and request bodies are size-capped (``MAX_CONTENT_LENGTH``).
+* Session cookies are ``HttpOnly`` + ``SameSite`` and ``Secure`` in production.
+"""
+
+from __future__ import annotations
+
+import os
+import secrets
+import sys
+
+try:  # python-dotenv is a declared dependency; degrade gracefully if absent.
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - defensive only
+    def load_dotenv(*_args, **_kwargs):  # type: ignore
+        return False
+
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(_PROJECT_ROOT, ".env"))
+
+# Where SQLite lives by default and where uploads are briefly written.
+_INSTANCE_DIR = os.path.join(_PROJECT_ROOT, "instance")
+
+
+def _bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _int(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, "").strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def _str(name: str, default: str) -> str:
+    """Return the env var, treating unset OR empty as "use the default".
+
+    This matters because a key left blank in .env (e.g. ``DATABASE_URL=``) sets
+    the variable to an empty string, which must not override a real default.
+    """
+    value = os.environ.get(name)
+    return value.strip() if value and value.strip() else default
+
+
+def _is_production() -> bool:
+    env = (os.environ.get("FLASK_ENV") or os.environ.get("APP_ENV") or "production").lower()
+    # Default to production-safe behaviour; only "development"/"dev" relaxes it.
+    return env not in {"development", "dev", "local", "test", "testing"}
+
+
+def _resolve_secret_key() -> str:
+    key = os.environ.get("SECRET_KEY", "").strip()
+    if key:
+        return key
+    if _is_production():
+        # In production a missing key is fatal: a generated key would invalidate
+        # every session on restart and differ across workers.
+        print(
+            "[config] FATAL: SECRET_KEY is not set but the app is running in "
+            "production mode. Set SECRET_KEY in your environment/.env.",
+            file=sys.stderr,
+            flush=True,
+        )
+        raise RuntimeError("SECRET_KEY must be set in production")
+    print(
+        "[config] WARNING: SECRET_KEY not set — generating an ephemeral dev key. "
+        "Sessions will not survive a restart. Set SECRET_KEY for stable sessions.",
+        flush=True,
+    )
+    return secrets.token_hex(32)
+
+
+class Config:
+    """Flask configuration resolved from the environment."""
+
+    # --- Core / security ---------------------------------------------------
+    DEBUG = _bool("FLASK_DEBUG", default=False)
+    TESTING = False
+    SECRET_KEY = _resolve_secret_key()
+
+    # Cap request bodies (covers JSON payloads and file uploads).
+    MAX_CONTENT_LENGTH = _int("MAX_CONTENT_LENGTH_MB", 8) * 1024 * 1024
+
+    # Session cookie hardening.
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = _str("SESSION_COOKIE_SAMESITE", "Lax")
+    SESSION_COOKIE_SECURE = _bool("SESSION_COOKIE_SECURE", default=_is_production())
+    PERMANENT_SESSION_LIFETIME = _int("SESSION_LIFETIME_DAYS", 14) * 24 * 3600
+
+    # CSRF: protect browser-originated state changes. The JSON API sends the
+    # token via the X-CSRFToken header (see static/csrf.js).
+    WTF_CSRF_ENABLED = _bool("WTF_CSRF_ENABLED", default=True)
+    WTF_CSRF_TIME_LIMIT = None  # token valid for the session lifetime
+
+    # --- Database ----------------------------------------------------------
+    SQLALCHEMY_DATABASE_URI = _str(
+        "DATABASE_URL",
+        f"sqlite:///{os.path.join(_INSTANCE_DIR, 'auto_cv.db')}",
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+
+    # --- Rate limiting -----------------------------------------------------
+    RATELIMIT_STORAGE_URI = _str("RATELIMIT_STORAGE_URI", "memory://")
+    RATELIMIT_DEFAULT = _str("RATELIMIT_DEFAULT", "300 per hour")
+    # Tighter budget for expensive endpoints (LLM calls / PDF compilation).
+    RATELIMIT_LLM = _str("RATELIMIT_LLM", "40 per hour")
+    RATELIMIT_AUTH = _str("RATELIMIT_AUTH", "20 per hour")
+    RATELIMIT_ENABLED = _bool("RATELIMIT_ENABLED", default=True)
+
+    # --- Uploads -----------------------------------------------------------
+    INSTANCE_DIR = _INSTANCE_DIR
+    ALLOWED_UPLOAD_EXTENSIONS = {"pdf", "docx", "tex", "txt"}
+
+    IS_PRODUCTION = _is_production()
+
+
+def ensure_instance_dir() -> None:
+    """Create the instance directory used by SQLite and temp uploads."""
+    os.makedirs(_INSTANCE_DIR, exist_ok=True)
