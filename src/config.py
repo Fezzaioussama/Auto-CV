@@ -126,7 +126,12 @@ class Config:
 
     # --- Uploads -----------------------------------------------------------
     INSTANCE_DIR = _INSTANCE_DIR
-    ALLOWED_UPLOAD_EXTENSIONS = {"pdf", "docx", "tex", "txt"}
+    # Text-layer formats are parsed directly; images (and scanned PDFs) are
+    # read with OCR (see src/ocr.py).
+    ALLOWED_UPLOAD_EXTENSIONS = {
+        "pdf", "docx", "tex", "txt",
+        "png", "jpg", "jpeg", "webp", "tif", "tiff", "bmp", "gif",
+    }
 
     IS_PRODUCTION = _is_production()
 
