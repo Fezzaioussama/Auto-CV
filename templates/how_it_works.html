@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How It Works | Auto-CV</title>
+    <meta name="description" content="See how Auto-CV turns a job offer and your CV into a reviewed, tailored LaTeX CV, PDF export, saved workspace item, and interview preparation flow.">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/style.css?v=5">
+    <link rel="stylesheet" href="/static/features.css?v=1">
+</head>
+<body>
+    <nav class="nav" id="navbar">
+        <div class="shell nav-inner">
+            <a class="brand" href="/">
+                <span class="logo logo-image"><img src="/static/assets/autocv-logo.png" alt="" aria-hidden="true"></span>
+                <span class="name">Auto<span>CV</span></span>
+            </a>
+            <div class="nav-links">
+                <a class="navlink" href="/#app">Optimizer</a>
+                <a class="navlink" href="/interview">Interview Prep</a>
+                <a class="navlink" href="/workspace">Workspace</a>
+                <a class="navlink active" href="/how-it-works">How it works</a>
+                <span id="navAuth" class="nav-auth"></span>
+            </div>
+        </div>
+    </nav>
+
+    <span id="top"></span>
+
+    <header class="how-hero">
+        <div class="how-hero-bg" aria-hidden="true"></div>
+        <div class="shell how-hero-inner">
+            <span class="eyebrow reveal in"><span class="dot"></span> Guided CV workflow</span>
+            <h1 class="reveal in d1">How Auto-CV moves from offer text to an application-ready CV.</h1>
+            <p class="lead reveal in d2">Each stage has a review checkpoint: analyze the role, structure your CV, compare the fit, approve changes, export the PDF, and keep the result in your workspace.</p>
+            <div class="hero-cta reveal in d3">
+                <a href="/#app" class="btn btn-cta"><i class="bi bi-magic"></i> Open optimizer</a>
+                <a href="#process" class="btn btn-ghost-light"><i class="bi bi-arrow-down-circle"></i> View process</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="section how-process" id="process">
+            <div class="shell">
+                <div class="section-head reveal">
+                    <div class="kicker">Process</div>
+                    <h2>Four checkpoints from input to output</h2>
+                    <p>The page mirrors the app flow so each visual maps to one action you take in the workspace.</p>
+                </div>
+
+                <div class="process-list">
+                    <article class="process-row reveal">
+                        <div class="process-media">
+                            <img src="/static/assets/how-offer-analysis.png" alt="Job offer document flowing into extracted skills, requirements, and qualifications panels" loading="lazy">
+                        </div>
+                        <div class="process-copy">
+                            <span class="process-step">Step 01</span>
+                            <h3>Paste or upload the job offer</h3>
+                            <p>Auto-CV reads the offer and separates the role into practical signals: required skills, qualifications, responsibilities, and keywords that matter for ATS matching.</p>
+                            <ul class="process-points">
+                                <li><i class="bi bi-check2-circle"></i> Supports pasted text and uploaded job files.</li>
+                                <li><i class="bi bi-check2-circle"></i> Keeps the original offer available for review.</li>
+                                <li><i class="bi bi-check2-circle"></i> Creates the skill list used by the next step.</li>
+                            </ul>
+                        </div>
+                    </article>
+
+                    <article class="process-row process-row-flipped reveal d1">
+                        <div class="process-media">
+                            <img src="/static/assets/how-cv-upload.png" alt="Candidate CV upload turning into structured profile cards for matching" loading="lazy">
+                        </div>
+                        <div class="process-copy">
+                            <span class="process-step">Step 02</span>
+                            <h3>Add your CV</h3>
+                            <p>Upload a LaTeX CV, PDF, Word document, image scan, or paste the source directly. The app prepares the content for comparison without changing your facts.</p>
+                            <ul class="process-points">
+                                <li><i class="bi bi-check2-circle"></i> Reads multiple CV formats.</li>
+                                <li><i class="bi bi-check2-circle"></i> Preserves editable LaTeX when available.</li>
+                                <li><i class="bi bi-check2-circle"></i> Structures your profile for precise matching.</li>
+                            </ul>
+                        </div>
+                    </article>
+
+                    <article class="process-row reveal">
+                        <div class="process-media">
+                            <img src="/static/assets/how-match-review.png" alt="Offer and CV comparison dashboard with match gauge and reviewable rewrite suggestions" loading="lazy">
+                        </div>
+                        <div class="process-copy">
+                            <span class="process-step">Step 03</span>
+                            <h3>Compare, rewrite, and review</h3>
+                            <p>The optimizer shows matched skills, missing signals, ATS priorities, and section rewrites. You approve, reject, or edit each suggested change before it affects the final CV.</p>
+                            <ul class="process-points">
+                                <li><i class="bi bi-check2-circle"></i> Match score and skill coverage show the gap.</li>
+                                <li><i class="bi bi-check2-circle"></i> Rewrites stay grounded in your existing CV.</li>
+                                <li><i class="bi bi-check2-circle"></i> Optional additions are marked for your input.</li>
+                            </ul>
+                        </div>
+                    </article>
+
+                    <article class="process-row process-row-flipped reveal d1">
+                        <div class="process-media">
+                            <img src="/static/assets/how-export-workspace.png" alt="Editable source moving to PDF export, saved workspace history, and interview preparation" loading="lazy">
+                        </div>
+                        <div class="process-copy">
+                            <span class="process-step">Step 04</span>
+                            <h3>Export, save, and prepare</h3>
+                            <p>Render the PDF, copy or download the corrected LaTeX, save the tailored CV with the job, then reuse the same context to generate interview questions.</p>
+                            <ul class="process-points">
+                                <li><i class="bi bi-check2-circle"></i> PDF rendering keeps a preview in the workspace.</li>
+                                <li><i class="bi bi-check2-circle"></i> Saved jobs and CV versions are reusable.</li>
+                                <li><i class="bi bi-check2-circle"></i> Interview prep starts from the same CV and offer.</li>
+                            </ul>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section how-next">
+            <div class="shell">
+                <div class="next-panel reveal">
+                    <div>
+                        <div class="kicker">Ready</div>
+                        <h2>Start with the offer, then keep every change under review.</h2>
+                        <p>The workflow is designed for fast tailoring without turning the CV into unverified claims.</p>
+                    </div>
+                    <a href="/#app" class="btn btn-primary"><i class="bi bi-arrow-right-circle"></i> Open optimizer</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+
+    <footer class="footer">
+        <div class="shell">
+            <div class="footer-grid">
+                <a class="brand" href="/">
+                    <span class="logo logo-image"><img src="/static/assets/autocv-logo.png" alt="" aria-hidden="true"></span>
+                    <span class="name">Auto<span style="color:#93c5fd">CV</span></span>
+                </a>
+                <div class="nav-links">
+                    <a href="/#app">Optimizer</a>
+                    <a href="/interview">Interview Prep</a>
+                    <a href="/workspace">Workspace</a>
+                    <a href="#top">Back to top <i class="bi bi-arrow-up-short"></i></a>
+                </div>
+            </div>
+            <div class="copyright">
+                AI-Powered LaTeX CV Generator for Job Applications &middot; Your facts stay yours.
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/csrf.js?v=1"></script>
+    <script src="/static/features.js?v=1"></script>
+    <script src="/static/animations.js?v=2"></script>
+</body>
+</html>
