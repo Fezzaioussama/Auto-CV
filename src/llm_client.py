@@ -79,6 +79,7 @@ class Task:
     INTERVIEW = "INTERVIEW"            # interview_agent: questions + review
     SMART_CV = "SMART_CV"             # smart_cv_generator: full CV generation
     LATEX_REPAIR = "LATEX_REPAIR"      # latex_repair: fix compilation errors
+    OCR = "OCR"                       # ocr: read text off images / scanned PDFs
     DEFAULT = "DEFAULT"               # anything not otherwise classified
 
 
@@ -264,6 +265,49 @@ def complete(
     ]
     return chat(
         messages,
+        task=task,
+        model=model,
+        base_url=base_url,
+        api_key=api_key,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        log_prefix=log_prefix,
+    )
+
+
+def vision(
+    prompt: str,
+    image_data_urls: List[str],
+    *,
+    system_prompt: str,
+    task: str = Task.OCR,
+    model: Optional[str] = None,
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    temperature: float = 0.0,
+    max_tokens: int = 3000,
+    log_prefix: str = "vision",
+) -> Optional[str]:
+    """Multimodal completion: one text instruction plus one or more images.
+
+    ``image_data_urls`` are ``data:<mime>;base64,...`` strings. They are sent
+    using the OpenAI-compatible ``image_url`` content blocks, which both
+    OpenRouter and most local servers accept. The configured model for
+    :attr:`Task.OCR` must support image input; if it does not (e.g. a text-only
+    model), the provider returns an error and this returns ``None`` so the
+    caller can fall back. Returns ``None`` on any failure, like :func:`chat`.
+    """
+    if not image_data_urls:
+        return None
+    content: List[Dict] = [{"type": "text", "text": prompt}]
+    for url in image_data_urls:
+        content.append({"type": "image_url", "image_url": {"url": url}})
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": content},
+    ]
+    return chat(
+        messages,  # type: ignore[arg-type]  # content is a list for vision
         task=task,
         model=model,
         base_url=base_url,

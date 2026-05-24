@@ -62,7 +62,8 @@ function setupCvUploadZone() {
             return;
         }
         const ext = (file.name.split('.').pop() || '').toLowerCase();
-        if (ext === 'tex' || ext === 'txt' || file.type.includes('text')) {
+        const SERVER_EXT = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg', 'webp', 'tif', 'tiff', 'bmp', 'gif'];
+        if (ext === 'tex' || ext === 'txt' || (file.type.includes('text') && !file.type.startsWith('image/'))) {
             const reader = new FileReader();
             reader.onload = (event) => {
                 cvLatexInput.value = event.target.result || '';
@@ -70,10 +71,10 @@ function setupCvUploadZone() {
             };
             reader.onerror = () => notify('danger', 'Could not read file', 'Try pasting the LaTeX directly.');
             reader.readAsText(file);
-        } else if (ext === 'pdf' || ext === 'docx') {
+        } else if (SERVER_EXT.includes(ext) || file.type.startsWith('image/')) {
             extractCvFile(file);
         } else {
-            notify('warning', 'Unsupported file', 'Upload a .tex, .pdf, or .docx CV.');
+            notify('warning', 'Unsupported file', 'Upload a .tex, .pdf, .docx, or an image (PNG/JPG) CV.');
         }
         input.value = '';
     };
@@ -98,7 +99,8 @@ function setupCvUploadZone() {
     input.addEventListener('change', () => handle(input.files[0]));
 }
 
-// Upload a PDF/DOCX CV; the server extracts text and returns a LaTeX document.
+// Upload a PDF/DOCX/image CV; the server extracts text (OCR for images and
+// scanned PDFs) and returns a LaTeX document.
 async function extractCvFile(file) {
     const statusEl = document.getElementById('cvExtractStatus');
     const templateEl = document.getElementById('cvTemplate');
@@ -109,7 +111,7 @@ async function extractCvFile(file) {
     if (templateEl && templateEl.value) form.append('template', templateEl.value);
     if (languageEl && languageEl.value) form.append('language', languageEl.value);
 
-    showLoading(true, 'Reading your CV', 'Extracting text from the file and building LaTeX');
+    showLoading(true, 'Reading your CV', 'Extracting text (OCR for images/scans) and building LaTeX');
     if (statusEl) statusEl.innerHTML = '';
     try {
         // Note: no Content-Type header — the browser sets the multipart boundary.

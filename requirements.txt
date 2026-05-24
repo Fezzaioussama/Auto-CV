@@ -24,6 +24,16 @@ email-validator==2.1.1    # validate registration email addresses
 pdfplumber==0.11.4        # extract text from uploaded PDF CVs
 python-docx==1.1.2        # extract text from uploaded Word CVs
 
+# --- OCR for image CVs and scanned (image-only) PDFs (optional) ---
+# The app degrades gracefully without these: if Tesseract is missing it falls
+# back to a vision LLM (set OPENROUTER_MODEL_OCR / LOCAL_MODEL_OCR). Tesseract
+# also needs the system binary, which pip cannot install:
+#   Debian/Ubuntu:  sudo apt install tesseract-ocr poppler-utils
+#   macOS (brew):   brew install tesseract poppler
+pytesseract==0.3.13       # Python binding for the Tesseract OCR engine
+pdf2image==1.17.0         # rasterize PDF pages for OCR (wraps poppler; optional
+                          # — a bare `pdftoppm` on PATH is used if this is absent)
+
 # Optional: LLM integration
 # ollama
 # openai

@@ -171,11 +171,11 @@
                     <!-- CV Upload Section -->
                     <div class="form-section hidden" id="cvSection">
                         <h3><i class="bi bi-person-badge"></i> Upload Your CV</h3>
-                        <div class="drop-zone" id="cvDropZone" role="button" tabindex="0" aria-label="Upload a CV file (LaTeX, PDF or Word)">
-                            <input class="visually-hidden" type="file" id="cvFileInput" accept=".tex,.txt,.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+                        <div class="drop-zone" id="cvDropZone" role="button" tabindex="0" aria-label="Upload a CV file (LaTeX, PDF, Word or image)">
+                            <input class="visually-hidden" type="file" id="cvFileInput" accept=".tex,.txt,.pdf,.docx,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp,.gif,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*">
                             <span class="drop-icon"><i class="bi bi-file-earmark-arrow-up"></i></span>
                             <p class="mb-2 fw-semibold">Drop your CV here or click to upload</p>
-                            <small class="text-muted">LaTeX (.tex), PDF or Word (.docx) — or paste LaTeX below</small>
+                            <small class="text-muted">LaTeX (.tex), PDF, Word (.docx) or an image/scan (PNG, JPG…) — or paste LaTeX below</small>
                         </div>
                         <div id="cvExtractStatus" class="mb-2"></div>
                         <textarea class="form-control mt-3" id="cvLatex" rows="10" placeholder="Paste your LaTeX CV code here..."></textarea>
