@@ -26,12 +26,13 @@ from flask import (
 )
 from flask_cors import CORS
 from flask_login import login_required, current_user
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # src/ is importable as bare modules (kept from the original layout).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from config import Config, ensure_instance_dir
-from extensions import db, login_manager, csrf, limiter
+from extensions import db, login_manager, csrf, limiter, migrate
 
 import llm_client  # loads .env and centralizes provider/model selection
 import latex_repair  # compile + LLM auto-repair of LaTeX
@@ -50,6 +51,16 @@ ensure_instance_dir()
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.config.from_object(Config)
 
+# Behind a reverse proxy / load balancer (the normal public deployment), trust
+# the proxy's forwarded headers so the real client IP reaches the rate limiter
+# and request.is_secure reflects the external HTTPS scheme. The hop count is
+# configurable: set it to the number of proxies in front of the app.
+_proxy_hops = int(os.environ.get("PROXY_FIX_HOPS", "0"))
+if _proxy_hops > 0:
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app, x_for=_proxy_hops, x_proto=_proxy_hops, x_host=_proxy_hops
+    )
+
 # CORS is only enabled when explicit origins are configured. For a same-origin
 # app it should stay off; allowing arbitrary origins with cookies is unsafe.
 _cors_origins = os.environ.get("CORS_ORIGINS", "").strip()
@@ -60,8 +71,20 @@ if _cors_origins:
 db.init_app(app)
 login_manager.init_app(app)
 csrf.init_app(app)
+if migrate is not None:
+    migrate.init_app(app, db)
 if app.config.get("RATELIMIT_ENABLED", True):
     limiter.init_app(app)
+    # In-memory limit storage doesn't survive restarts and isn't shared across
+    # worker processes/instances, so limits effectively don't hold in a real
+    # multi-worker deployment. Warn loudly; production should set REDIS_URL.
+    if app.config.get("IS_PRODUCTION") and str(
+        app.config.get("RATELIMIT_STORAGE_URI", "")
+    ).startswith("memory://"):
+        app.logger.warning(
+            "Rate-limit storage is in-memory in production; limits won't hold "
+            "across workers/restarts. Set RATELIMIT_STORAGE_URI (e.g. a redis:// URL)."
+        )
 
 login_manager.login_view = "auth.login"
 login_manager.session_protection = "strong"
@@ -71,18 +94,51 @@ import models  # noqa: E402  (must follow db.init_app)
 from auth import auth_bp  # noqa: E402
 from workspace import workspace_bp  # noqa: E402
 from features import features_bp  # noqa: E402
+from account import account_bp  # noqa: E402
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(workspace_bp)
 app.register_blueprint(features_bp)
+app.register_blueprint(account_bp)
 
 with app.app_context():
     db.create_all()
 
 
+# ---------------------------------------------------------------------------
+# Observability (optional, env-gated): error tracking + log level
+# ---------------------------------------------------------------------------
+
+import logging  # noqa: E402
+
+if not app.debug:
+    app.logger.setLevel(logging.INFO)
+
+_sentry_dsn = os.environ.get("SENTRY_DSN", "").strip()
+if _sentry_dsn:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+
+        sentry_sdk.init(
+            dsn=_sentry_dsn,
+            integrations=[FlaskIntegration()],
+            traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.0")),
+            send_default_pii=False,  # don't ship user PII to the error tracker
+        )
+        app.logger.info("Sentry error tracking enabled.")
+    except Exception as exc:  # noqa: BLE001 - never let telemetry break boot
+        app.logger.warning("SENTRY_DSN is set but Sentry init failed: %s", exc)
+
+
 def llm_limit() -> str:
     """Per-request resolution of the tighter limit for expensive endpoints."""
     return app.config.get("RATELIMIT_LLM", "40 per hour")
+
+
+def demo_limit() -> str:
+    """Tight per-IP limit for the public, no-login demo endpoint."""
+    return app.config.get("RATELIMIT_DEMO", "5 per day")
 
 
 # ---------------------------------------------------------------------------
@@ -168,9 +224,13 @@ def _internal(e):
 
 
 @app.route("/")
-@login_required
 def index():
-    """Render the authenticated optimizer workspace."""
+    """Render the optimizer/landing page.
+
+    Public so visitors can see the product and value proposition before signing
+    up (widening the funnel). Heavy actions still require auth and prompt login;
+    anonymous visitors can also try the capped ``/demo``.
+    """
     return render_template("index.html")
 
 
@@ -182,10 +242,15 @@ def interview():
 
 
 @app.route("/how-it-works")
-@login_required
 def how_it_works():
-    """Render the guided product workflow page."""
+    """Render the guided product workflow page (public explainer)."""
     return render_template("how_it_works.html")
+
+
+@app.route("/demo")
+def demo_page():
+    """Public, no-login taste of the optimizer."""
+    return render_template("demo.html")
 
 
 @app.route("/workspace")
@@ -193,6 +258,18 @@ def how_it_works():
 def workspace_page():
     """Render the saved-jobs / CV-history workspace."""
     return render_template("workspace.html")
+
+
+# Legal pages are public (linked from auth pages and the footer) so visitors can
+# read them before creating an account.
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html", updated="2026-05-24")
+
+
+@app.route("/terms")
+def terms():
+    return render_template("terms.html", updated="2026-05-24")
 
 
 # ---------------------------------------------------------------------------
@@ -257,9 +334,14 @@ def interview_review():
 
 
 @app.route("/api/parse-job", methods=["POST"])
+@login_required
 @limiter.limit(llm_limit)
 def parse_job():
-    """Parse a job description and extract information."""
+    """Parse a job description and extract information.
+
+    Requires auth: parsing runs an LLM call, so leaving it open let anyone burn
+    the app's LLM budget. Anonymous visitors use the capped ``/api/demo`` flow.
+    """
     try:
         data = request.get_json()
         text = data.get("text", "")
@@ -390,6 +472,52 @@ def llm_health():
         "source": llm_client.active_source(),
         "config": llm_client.describe_config(),
     })
+
+
+# Plain-text sample CV used by the public demo when a visitor doesn't paste
+# their own. Broad enough to produce meaningful matched/missing lists.
+_DEMO_SAMPLE_CV = """
+Alex Morgan — Software Engineer
+Summary: Backend-leaning full-stack engineer with 6 years building web apps and
+APIs. Comfortable across the stack and shipping to production.
+Skills: Python, Flask, JavaScript, SQL, PostgreSQL, REST APIs, Git, Linux,
+unit testing, CI/CD, Agile.
+Experience:
+- Built and maintained Python/Flask services and REST APIs serving 100k users.
+- Designed PostgreSQL schemas and optimized queries.
+- Wrote automated tests and set up CI pipelines.
+Education: BSc Computer Science.
+"""
+
+
+@app.route("/api/demo", methods=["POST"])
+@limiter.limit(demo_limit)
+def demo_optimize():
+    """Public, capped taste of the optimizer (no login).
+
+    Analyzes a pasted job offer against the user's CV text — or a built-in
+    sample CV if none is given — and returns the match breakdown. Editing and
+    export stay behind sign-up. Tightly rate limited per IP to bound LLM cost.
+    """
+    try:
+        data = request.get_json() or {}
+        job_text = (data.get("job_text") or data.get("text") or "").strip()[:8000]
+        provided_cv = (data.get("cv_latex") or data.get("cv") or "").strip()[:20000]
+        if not job_text:
+            return jsonify({"error": "Paste a job description to try the demo."}), 400
+
+        cv_text = provided_cv or _DEMO_SAMPLE_CV
+        parsed = parse_job_description(job_text)
+        analysis = analyze_cv(cv_text, parsed)
+        # Drop internal/bulky fields before returning to an anonymous client.
+        analysis.pop("_cv_text", None)
+        return jsonify({
+            "success": True,
+            "analysis": analysis,
+            "used_sample_cv": not bool(provided_cv),
+        })
+    except Exception as e:  # noqa: BLE001
+        return _server_error(e)
 
 
 @app.route("/api/sample-cv", methods=["GET"])

@@ -39,6 +39,10 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(120), nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
+    # Email confirmation. Login is allowed while unverified unless
+    # REQUIRE_EMAIL_VERIFICATION is on; the UI nudges the user to confirm.
+    email_verified = db.Column(db.Boolean, default=False, nullable=False)
+    verified_at = db.Column(db.DateTime, nullable=True)
 
     jobs = db.relationship("Job", backref="user", lazy=True, cascade="all, delete-orphan")
     cvs = db.relationship("CVDocument", backref="user", lazy=True, cascade="all, delete-orphan")
@@ -53,7 +57,12 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def to_dict(self) -> dict:
-        return {"id": self.id, "email": self.email, "name": self.name}
+        return {
+            "id": self.id,
+            "email": self.email,
+            "name": self.name,
+            "email_verified": self.email_verified,
+        }
 
 
 @login_manager.user_loader
@@ -73,6 +82,13 @@ class Job(db.Model):
     parsed = db.Column(db.JSON, nullable=True)
     language = db.Column(db.String(8), default="en", nullable=False)
     created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
+    # --- Application tracking -------------------------------------------
+    # Where this application stands, so the workspace is a tracker, not just a
+    # list. One of: saved | applied | interviewing | offer | rejected.
+    status = db.Column(db.String(16), default="saved", nullable=False)
+    applied_at = db.Column(db.DateTime, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    url = db.Column(db.String(1024), nullable=True)
 
     cv_versions = db.relationship("CVVersion", backref="job", lazy=True)
     cover_letters = db.relationship("CoverLetter", backref="job", lazy=True)
@@ -85,6 +101,10 @@ class Job(db.Model):
             "language": self.language,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "skills": (self.parsed or {}).get("skills", []),
+            "status": self.status,
+            "applied_at": self.applied_at.isoformat() if self.applied_at else None,
+            "url": self.url,
+            "notes": self.notes,
         }
         if include_text:
             data["raw_text"] = self.raw_text

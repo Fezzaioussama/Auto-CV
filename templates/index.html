@@ -48,7 +48,7 @@
                 <p class="lead reveal in d2">Paste the offer, upload your LaTeX CV, and review the matched skills, rewritten sections, optional additions, and PDF preview in one workspace.</p>
                 <div class="hero-cta reveal in d3">
                     <a href="#app" class="btn btn-cta"><i class="bi bi-arrow-down-circle"></i> Open optimizer</a>
-                    <a href="/interview" class="btn btn-ghost-light"><i class="bi bi-mic"></i> Interview prep</a>
+                    <a href="/demo" class="btn btn-ghost-light"><i class="bi bi-play-circle"></i> Try a live demo</a>
                 </div>
             </div>
             <div class="hero-panel reveal in d2" aria-label="Auto-CV workflow summary">
@@ -127,6 +127,11 @@
                             <span class="drop-icon"><i class="bi bi-file-text"></i></span>
                             <p class="mb-2 fw-semibold">Drop a job description file here or click to upload</p>
                             <small class="text-muted">or paste the text below</small>
+                        </div>
+                        <div class="input-group mt-3">
+                            <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                            <input type="url" class="form-control" id="jobUrl" placeholder="…or paste a job posting URL (LinkedIn, Indeed, careers page)">
+                            <button class="btn btn-outline-primary" type="button" onclick="fetchJobFromUrl()">Fetch</button>
                         </div>
                         <textarea class="form-control mt-3" id="jobDescription" rows="6" placeholder="Paste your job description here..."></textarea>
                         <div class="d-flex flex-wrap gap-2 mt-3">
@@ -315,6 +320,12 @@
                                 <div class="d-flex flex-wrap gap-2">
                                     <button class="btn btn-success btn-sm" onclick="downloadPDF()">
                                         <i class="bi bi-file-pdf"></i> Download PDF
+                                    </button>
+                                    <button class="btn btn-outline-primary btn-sm" onclick="exportCV('docx')">
+                                        <i class="bi bi-file-word"></i> Word
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="exportCV('txt')">
+                                        <i class="bi bi-file-text"></i> .txt
                                     </button>
                                     <button class="btn btn-outline-secondary btn-sm" onclick="renderPDFPreview()">
                                         <i class="bi bi-eye"></i> Render PDF

@@ -7,6 +7,8 @@ account's data even by guessing IDs.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from flask import Blueprint, request, jsonify, abort
 from flask_login import login_required, current_user
 
@@ -19,6 +21,9 @@ except ImportError:  # pragma: no cover
 
 
 workspace_bp = Blueprint("workspace", __name__)
+
+# Valid application statuses (kept in sync with the workspace UI dropdown).
+JOB_STATUSES = ("saved", "applied", "interviewing", "offer", "rejected")
 
 
 def _owned(model, obj_id):
@@ -61,6 +66,10 @@ def create_job():
     if not raw_text:
         return jsonify({"error": "Job text is required."}), 400
 
+    status = (data.get("status") or "saved").strip().lower()
+    if status not in JOB_STATUSES:
+        status = "saved"
+
     job = Job(
         user_id=current_user.id,
         title=(data.get("title") or "").strip() or None,
@@ -68,10 +77,42 @@ def create_job():
         raw_text=raw_text,
         parsed=data.get("parsed"),
         language=(data.get("language") or "en")[:8],
+        status=status,
+        url=(data.get("url") or "").strip()[:1024] or None,
+        notes=(data.get("notes") or "").strip() or None,
+        applied_at=datetime.utcnow() if status == "applied" else None,
     )
     db.session.add(job)
     db.session.commit()
     return jsonify({"success": True, "job": job.to_dict(include_text=True)}), 201
+
+
+@workspace_bp.route("/api/jobs/<int:job_id>", methods=["PATCH"])
+@login_required
+def update_job(job_id):
+    """Update application-tracking fields (status, notes, url) on a saved job."""
+    job = _owned(Job, job_id)
+    data = request.get_json() or {}
+
+    if "status" in data:
+        status = (data.get("status") or "").strip().lower()
+        if status not in JOB_STATUSES:
+            return jsonify({"error": f"Invalid status. Use one of: {', '.join(JOB_STATUSES)}."}), 400
+        # Stamp the application date the first time it moves to 'applied'.
+        if status == "applied" and job.applied_at is None:
+            job.applied_at = datetime.utcnow()
+        job.status = status
+    if "notes" in data:
+        job.notes = (data.get("notes") or "").strip() or None
+    if "url" in data:
+        job.url = (data.get("url") or "").strip()[:1024] or None
+    if "title" in data:
+        job.title = (data.get("title") or "").strip() or None
+    if "company" in data:
+        job.company = (data.get("company") or "").strip() or None
+
+    db.session.commit()
+    return jsonify({"success": True, "job": job.to_dict()})
 
 
 @workspace_bp.route("/api/jobs/<int:job_id>", methods=["GET"])

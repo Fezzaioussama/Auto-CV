@@ -7,7 +7,10 @@ limited; results can optionally be persisted to the user's workspace.
 
 from __future__ import annotations
 
-from flask import Blueprint, request, jsonify, current_app
+from datetime import datetime
+from io import BytesIO
+
+from flask import Blueprint, request, jsonify, current_app, send_file
 from flask_login import login_required, current_user
 
 try:  # importable both as a bare module (main.py) and as the src package
@@ -15,12 +18,16 @@ try:  # importable both as a bare module (main.py) and as the src package
     from models import CoverLetter
     import file_extract
     import cv_templates
+    import cv_export
+    import web_fetch
     import cover_letter as cover_letter_mod
 except ImportError:  # pragma: no cover
     from .extensions import db, limiter
     from .models import CoverLetter
     from . import file_extract
     from . import cv_templates
+    from . import cv_export
+    from . import web_fetch
     from . import cover_letter as cover_letter_mod
 
 
@@ -86,6 +93,47 @@ def apply_template():
     if not latex:
         return jsonify({"error": "No LaTeX provided."}), 400
     return jsonify({"success": True, "latex": cv_templates.apply_template(latex, template)})
+
+
+@features_bp.route("/api/fetch-job-url", methods=["POST"])
+@login_required
+@limiter.limit(_llm_limit)
+def fetch_job_url():
+    """Fetch a job posting from a URL and return its text (SSRF-protected)."""
+    data = request.get_json() or {}
+    url = (data.get("url") or "").strip()
+    if not url:
+        return jsonify({"error": "Provide a job posting URL."}), 400
+    try:
+        text = web_fetch.fetch_url_text(url)
+    except web_fetch.FetchError as exc:
+        return jsonify({"error": str(exc)}), 422
+    return jsonify({"success": True, "text": text, "url": url})
+
+
+@features_bp.route("/api/export", methods=["POST"])
+@login_required
+def export_cv():
+    """Export the current CV (LaTeX) as a Word (.docx) or plain-text file.
+
+    Recruiters and job portals usually want Word or text rather than LaTeX/PDF,
+    so this converts the tailored CV without needing a LaTeX toolchain.
+    """
+    data = request.get_json() or {}
+    latex = (data.get("latex") or data.get("cv_latex") or "").strip()
+    fmt = (data.get("format") or "docx").lower()
+    if not latex:
+        return jsonify({"error": "No CV content to export."}), 400
+
+    try:
+        content, mimetype, ext = cv_export.export_cv(latex, fmt)
+    except cv_export.ExportError as exc:
+        return jsonify({"error": str(exc)}), 422
+
+    filename = f"cv_{datetime.now():%Y%m%d_%H%M%S}.{ext}"
+    return send_file(
+        BytesIO(content), mimetype=mimetype, as_attachment=True, download_name=filename
+    )
 
 
 @features_bp.route("/api/cover-letter", methods=["POST"])
