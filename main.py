@@ -181,6 +181,13 @@ def interview():
     return render_template("interview.html")
 
 
+@app.route("/how-it-works")
+@login_required
+def how_it_works():
+    """Render the guided product workflow page."""
+    return render_template("how_it_works.html")
+
+
 @app.route("/workspace")
 @login_required
 def workspace_page():
