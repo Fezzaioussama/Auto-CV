@@ -19,6 +19,8 @@ Flask-Login==0.6.3        # session-based authentication
 Flask-Limiter==3.8.0      # rate limiting on API / LLM endpoints
 Flask-WTF==1.2.1          # CSRF protection for browser form/JSON requests
 email-validator==2.1.1    # validate registration email addresses
+Flask-Migrate==4.0.7      # Alembic schema migrations (flask db migrate/upgrade)
+redis==5.0.8              # optional: shared rate-limit storage (set RATELIMIT_STORAGE_URI)
 
 # --- PDF / DOCX CV ingestion ---
 pdfplumber==0.11.4        # extract text from uploaded PDF CVs
@@ -33,6 +35,10 @@ python-docx==1.1.2        # extract text from uploaded Word CVs
 pytesseract==0.3.13       # Python binding for the Tesseract OCR engine
 pdf2image==1.17.0         # rasterize PDF pages for OCR (wraps poppler; optional
                           # — a bare `pdftoppm` on PATH is used if this is absent)
+
+# --- Optional: error tracking + tests ---
+# sentry-sdk[flask]>=2.0   # enable by setting SENTRY_DSN (uncomment to install)
+pytest==8.3.3              # test suite (tests/)
 
 # Optional: LLM integration
 # ollama

@@ -26,7 +26,7 @@
             if (data.authenticated) {
                 const name = data.user.name || data.user.email;
                 slot.innerHTML =
-                    `<span class="nav-user" title="${esc(data.user.email)}"><i class="bi bi-person-circle"></i> ${esc(name)}</span>` +
+                    `<a class="nav-user" href="/account" title="${esc(data.user.email)}"><i class="bi bi-person-circle"></i> ${esc(name)}</a>` +
                     `<a class="btn btn-outline-secondary btn-sm" href="/logout">Logout</a>`;
             } else {
                 slot.innerHTML =

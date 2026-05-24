@@ -131,6 +131,23 @@ class CompileResult:
     timed_out: bool = False
 
 
+def _sandboxed_env() -> dict:
+    """Environment that locks pdflatex down for untrusted input.
+
+    The CV LaTeX we compile is user-controlled (the editor is a raw textarea and
+    ``.tex`` uploads pass through verbatim), so a malicious document could try to
+    read server files via ``\\input``/``\\openin`` or run commands via
+    ``\\write18``. We pin TeX's own file-access policy to "paranoid" so it can
+    only touch files in/under the compile directory, and forbid shell escape via
+    the config layer too (belt-and-braces with the ``-no-shell-escape`` flag).
+    """
+    env = dict(os.environ)
+    env["openin_any"] = "p"     # paranoid: no reads outside the tree, no dotfiles
+    env["openout_any"] = "p"    # paranoid: no writes outside the tree
+    env["shell_escape"] = "f"   # disable \write18 at the texmf level as well
+    return env
+
+
 def compile_latex(latex_content: str, workdir: str, *, timeout: float = COMPILE_TIMEOUT) -> CompileResult:
     """Run pdflatex in ``workdir`` and return the result.
 
@@ -138,6 +155,9 @@ def compile_latex(latex_content: str, workdir: str, *, timeout: float = COMPILE_
     recover from minor issues and still emit a PDF; we accept that, matching the
     app's previous tolerant behaviour). Raises ``FileNotFoundError`` if pdflatex
     is not installed — repair cannot help with that.
+
+    The compile is sandboxed (``-no-shell-escape`` + paranoid file-access env +
+    ``cwd`` pinned to the throwaway workdir) because the LaTeX is untrusted.
     """
     os.makedirs(workdir, exist_ok=True)
     tex_file = os.path.join(workdir, "cv.tex")
@@ -149,9 +169,17 @@ def compile_latex(latex_content: str, workdir: str, *, timeout: float = COMPILE_
 
     try:
         proc = subprocess.run(
-            ["pdflatex", "-interaction=nonstopmode", "-output-directory", workdir, tex_file],
+            [
+                "pdflatex",
+                "-no-shell-escape",        # never run external commands (\write18)
+                "-interaction=nonstopmode",
+                "-output-directory", workdir,
+                tex_file,
+            ],
             capture_output=True,
             timeout=timeout,
+            cwd=workdir,                   # don't let relative paths reach the app tree
+            env=_sandboxed_env(),
         )
     except subprocess.TimeoutExpired:
         return CompileResult(False, None, "pdflatex timed out", -1, timed_out=True)

@@ -188,9 +188,40 @@ function setupTextFileZone({ zone, input, allowedExtensions, invalidMessage, onT
     input.addEventListener('change', () => readFile(input.files[0]));
 }
 
+// Pull a job posting's text from a URL (server fetches it, SSRF-protected),
+// drop it into the textarea, then parse it like any pasted offer.
+async function fetchJobFromUrl() {
+    const urlInput = document.getElementById('jobUrl');
+    const url = (urlInput && urlInput.value || '').trim();
+    if (!url) {
+        notify('warning', 'No URL', 'Paste a job posting URL first.');
+        return;
+    }
+
+    showLoading(true, 'Fetching the offer', 'Reading the job posting from the URL');
+    try {
+        const response = await fetch('/api/fetch-job-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            notify('danger', 'Could not fetch', data.error || 'The page could not be read.');
+            return;
+        }
+        jobDescriptionInput.value = data.text || '';
+        notify('success', 'Offer fetched', 'Review the text below, then parse it.');
+    } catch (e) {
+        notify('danger', 'Could not fetch', 'A network error occurred. Paste the text instead.');
+    } finally {
+        showLoading(false);
+    }
+}
+
 async function parseJobDescription() {
     const text = jobDescriptionInput.value.trim();
-    
+
     if (!text) {
         notify('warning', 'Job description missing', 'Paste an offer or upload a text file first.');
         return;
@@ -625,6 +656,47 @@ async function downloadPDF() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     notify('success', 'PDF downloaded', 'Your optimized CV PDF was generated.');
+}
+
+// Export the optimized CV to a recruiter-friendly Word (.docx) or plain-text
+// file via the server-side converter (no LaTeX toolchain needed for these).
+async function exportCV(format) {
+    const latex = getOptimizedLatex();
+    if (!latex) {
+        notify('warning', 'Nothing to export', 'Optimize your CV first, then export to Word or text.');
+        return;
+    }
+
+    const ext = format === 'docx' ? 'docx' : 'txt';
+    showLoading(true, 'Exporting', `Preparing your ${ext.toUpperCase()} file`);
+    try {
+        const response = await fetch('/api/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ latex, format })
+        });
+        if (!response.ok) {
+            let msg = 'Export failed.';
+            try { const e = await response.json(); msg = e.error || msg; } catch (_) {}
+            notify('danger', 'Export failed', msg);
+            return;
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cv_optimized_${new Date().toISOString().split('T')[0]}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        notify('success', 'Export ready', `Your ${ext.toUpperCase()} file was downloaded.`);
+    } catch (e) {
+        console.error('Export error:', e);
+        notify('danger', 'Export failed', 'An error occurred while exporting. Please try again.');
+    } finally {
+        showLoading(false);
+    }
 }
 
 async function renderLatexToPdfBlob() {

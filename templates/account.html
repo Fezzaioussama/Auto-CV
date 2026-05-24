@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account | Auto-CV</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/style.css?v=5">
+    <link rel="stylesheet" href="/static/features.css?v=1">
+</head>
+<body>
+    <nav class="nav" id="navbar">
+        <div class="shell nav-inner">
+            <a class="brand" href="/">
+                <span class="logo logo-image"><img src="/static/assets/autocv-logo.png" alt="" aria-hidden="true"></span>
+                <span class="name">Auto<span>CV</span></span>
+            </a>
+            <div class="nav-links">
+                <a class="navlink" href="/#app">Optimizer</a>
+                <a class="navlink" href="/interview">Interview Prep</a>
+                <a class="navlink" href="/workspace">Workspace</a>
+                <a class="navlink" href="/how-it-works">How it works</a>
+                <span id="navAuth" class="nav-auth"></span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="section" style="padding-top: 110px;">
+        <div class="shell" style="max-width: 760px;">
+            <div class="section-head">
+                <div class="kicker">Your account</div>
+                <h2>Account &amp; privacy</h2>
+                <p>Manage your sign-in details and your data.</p>
+            </div>
+
+            <div id="verifyBanner" class="auth-alert info" style="display:none;">
+                Your email isn't confirmed yet.
+                <a href="#" id="resendVerify">Resend the confirmation link</a>.
+            </div>
+            <div id="formMsg" class="auth-alert" style="display:none;"></div>
+
+            <div class="card p-4 mb-4">
+                <h5><i class="bi bi-person"></i> Profile</h5>
+                <p class="text-muted mb-0">Signed in as <strong id="acctEmail">…</strong>
+                    <span id="acctVerified" class="badge bg-secondary">unconfirmed</span></p>
+            </div>
+
+            <div class="card p-4 mb-4">
+                <h5><i class="bi bi-key"></i> Change password</h5>
+                <form id="pwForm" class="mt-2">
+                    <input class="form-control mb-2" type="password" id="pwCurrent" placeholder="Current password" autocomplete="current-password" required>
+                    <input class="form-control mb-2" type="password" id="pwNew" placeholder="New password (min 8 chars)" autocomplete="new-password" minlength="8" required>
+                    <button class="btn btn-primary" type="submit">Update password</button>
+                </form>
+            </div>
+
+            <div class="card p-4 mb-4">
+                <h5><i class="bi bi-envelope"></i> Change email</h5>
+                <form id="emailForm" class="mt-2">
+                    <input class="form-control mb-2" type="email" id="emNew" placeholder="New email address" autocomplete="email" required>
+                    <input class="form-control mb-2" type="password" id="emPw" placeholder="Confirm with your password" autocomplete="current-password" required>
+                    <button class="btn btn-primary" type="submit">Update email</button>
+                </form>
+            </div>
+
+            <div class="card p-4 mb-4">
+                <h5><i class="bi bi-download"></i> Export your data</h5>
+                <p class="text-muted">Download everything we store about you (account, jobs, CVs, cover letters) as JSON.</p>
+                <a class="btn btn-outline-secondary" href="/api/account/export">Download my data</a>
+            </div>
+
+            <div class="card p-4 mb-4" style="border-color:#f3c2c2;">
+                <h5 class="text-danger"><i class="bi bi-trash"></i> Delete account</h5>
+                <p class="text-muted">This permanently deletes your account and all associated data. This cannot be undone.</p>
+                <form id="deleteForm" class="mt-2">
+                    <input class="form-control mb-2" type="password" id="delPw" placeholder="Confirm with your password" autocomplete="current-password" required>
+                    <button class="btn btn-danger" type="submit">Delete my account permanently</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer"><div class="shell">
+        <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a>
+    </div></footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/csrf.js?v=1"></script>
+    <script>
+    (function () {
+        const $ = (id) => document.getElementById(id);
+        function msg(text, kind) {
+            const box = $('formMsg');
+            box.className = 'auth-alert ' + (kind === 'error' ? 'error' : 'info');
+            box.textContent = text;
+            box.style.display = 'block';
+            box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        async function postJSON(url, body) {
+            const r = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body || {}),
+            });
+            let data = {};
+            try { data = await r.json(); } catch (e) {}
+            return { ok: r.ok, data };
+        }
+
+        async function load() {
+            try {
+                const data = await (await fetch('/api/me')).json();
+                if (!data.authenticated) { window.location.href = '/login'; return; }
+                const slot = $('navAuth');
+                const name = data.user.name || data.user.email;
+                slot.innerHTML = `<span class="nav-user"><i class="bi bi-person-circle"></i> ${name}</span>` +
+                    `<a class="btn btn-outline-secondary btn-sm" href="/logout">Logout</a>`;
+                $('acctEmail').textContent = data.user.email;
+                const vb = $('acctVerified');
+                if (data.user.email_verified) {
+                    vb.textContent = 'confirmed'; vb.className = 'badge bg-success';
+                    $('verifyBanner').style.display = 'none';
+                } else {
+                    vb.textContent = 'unconfirmed'; vb.className = 'badge bg-secondary';
+                    $('verifyBanner').style.display = 'block';
+                }
+            } catch (e) { /* ignore */ }
+        }
+
+        $('resendVerify').addEventListener('click', async (e) => {
+            e.preventDefault();
+            const { data } = await postJSON('/resend-verification', {});
+            msg(data.message || 'Confirmation email sent.', 'info');
+        });
+
+        $('pwForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const { ok, data } = await postJSON('/api/account/password', {
+                current_password: $('pwCurrent').value, new_password: $('pwNew').value,
+            });
+            msg(ok ? (data.message || 'Password updated.') : (data.error || 'Could not update.'), ok ? 'info' : 'error');
+            if (ok) e.target.reset();
+        });
+
+        $('emailForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const { ok, data } = await postJSON('/api/account/email', {
+                email: $('emNew').value, password: $('emPw').value,
+            });
+            msg(ok ? (data.message || 'Email updated.') : (data.error || 'Could not update.'), ok ? 'info' : 'error');
+            if (ok) { e.target.reset(); load(); }
+        });
+
+        $('deleteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!confirm('Delete your account and all data permanently? This cannot be undone.')) return;
+            const { ok, data } = await postJSON('/api/account/delete', { password: $('delPw').value });
+            if (ok) { window.location.href = data.redirect || '/login'; }
+            else { msg(data.error || 'Could not delete the account.', 'error'); }
+        });
+
+        load();
+    })();
+    </script>
+</body>
+</html>

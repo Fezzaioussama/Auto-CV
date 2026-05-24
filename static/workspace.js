@@ -34,7 +34,7 @@
             const data = await (await fetch('/api/me')).json();
             if (data.authenticated) {
                 const name = data.user.name || data.user.email;
-                slot.innerHTML = `<span class="nav-user"><i class="bi bi-person-circle"></i> ${esc(name)}</span>` +
+                slot.innerHTML = `<a class="nav-user" href="/account"><i class="bi bi-person-circle"></i> ${esc(name)}</a>` +
                     `<a class="btn btn-outline-secondary btn-sm" href="/logout">Logout</a>`;
             }
         } catch (e) { /* ignore */ }
@@ -51,21 +51,32 @@
                 return;
             }
             list.innerHTML = '';
+            const STATUSES = ['saved', 'applied', 'interviewing', 'offer', 'rejected'];
             jobs.forEach((job) => {
                 const skills = (job.skills || []).slice(0, 8)
                     .map((s) => `<span class="skills-badge">${esc(s)}</span>`).join(' ');
+                const options = STATUSES.map((s) =>
+                    `<option value="${s}"${(job.status || 'saved') === s ? ' selected' : ''}>${s}</option>`).join('');
+                const link = job.url
+                    ? ` · <a href="${esc(job.url)}" target="_blank" rel="noopener">offer link</a>` : '';
+                const appliedNote = job.applied_at ? ` · applied ${fmtDate(job.applied_at)}` : '';
                 const item = document.createElement('div');
                 item.className = 'ws-item';
                 item.innerHTML = `
                     <div class="ws-item-head">
                         <div>
                             <strong>${esc(job.title || job.company || 'Saved job')}</strong>
-                            <div class="ws-meta">${esc(job.company || '')} · ${fmtDate(job.created_at)} · ${esc(job.language || 'en')}</div>
+                            <div class="ws-meta">${esc(job.company || '')} · ${fmtDate(job.created_at)} · ${esc(job.language || 'en')}${appliedNote}${link}</div>
                         </div>
                         <button class="btn btn-outline-danger btn-sm" data-del-job="${job.id}"><i class="bi bi-trash"></i></button>
                     </div>
+                    <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
+                        <label class="ws-meta mb-0">Status</label>
+                        <select class="form-select form-select-sm" data-status="${job.id}" style="width:auto;">${options}</select>
+                    </div>
                     <div class="mt-2">${skills || '<span class="text-muted">No skills extracted.</span>'}</div>`;
                 item.querySelector('[data-del-job]').addEventListener('click', () => deleteJob(job.id));
+                item.querySelector('[data-status]').addEventListener('change', (e) => updateJobStatus(job.id, e.target.value));
                 list.appendChild(item);
             });
         } catch (e) {
@@ -78,6 +89,16 @@
         const r = await fetch('/api/jobs/' + id, { method: 'DELETE' });
         if (r.ok) { notify('success', 'Job deleted'); loadJobs(); }
         else notify('danger', 'Delete failed');
+    }
+
+    async function updateJobStatus(id, status) {
+        const r = await fetch('/api/jobs/' + id, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+        });
+        if (r.ok) { notify('success', 'Status updated', status); loadJobs(); }
+        else notify('danger', 'Could not update status');
     }
 
     // ---- CVs + versions -------------------------------------------------

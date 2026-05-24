@@ -9,6 +9,8 @@ All account endpoints are rate limited to blunt credential-stuffing.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from flask import (
     Blueprint,
     render_template,
@@ -18,15 +20,20 @@ from flask import (
     flash,
     jsonify,
     session,
+    current_app,
 )
 from flask_login import login_user, logout_user, login_required, current_user
 
 try:  # importable both as a bare module (main.py) and as the src package
     from extensions import db, limiter
     from models import User
+    import email_utils
+    from tokens import make_token, read_token, PURPOSE_RESET, PURPOSE_VERIFY
 except ImportError:  # pragma: no cover
     from .extensions import db, limiter
     from .models import User
+    from . import email_utils
+    from .tokens import make_token, read_token, PURPOSE_RESET, PURPOSE_VERIFY
 
 try:
     from email_validator import validate_email, EmailNotValidError
@@ -120,8 +127,21 @@ def register():
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
-    login_user(user, remember=True)
 
+    _send_verification(user)
+
+    # When verification is mandatory, don't sign the user in yet — make them
+    # confirm first. Otherwise keep the frictionless "register and you're in"
+    # flow, with a UI banner nudging them to confirm.
+    if current_app.config.get("REQUIRE_EMAIL_VERIFICATION"):
+        msg = "Account created. Check your email to confirm it before signing in."
+        if _wants_json():
+            return jsonify({"success": True, "verify_required": True, "message": msg,
+                            "redirect": url_for("auth.login")})
+        flash(msg, "info")
+        return redirect(url_for("auth.login"))
+
+    login_user(user, remember=True)
     target = url_for("index")
     resp = _auth_response(True, message="", redirect_to=target)
     return resp
@@ -154,6 +174,11 @@ def login():
         resp = _auth_response(False, message=msg, redirect_to="", status=401)
         return resp if resp is not None else render_template("login.html")
 
+    if current_app.config.get("REQUIRE_EMAIL_VERIFICATION") and not user.email_verified:
+        msg = "Please confirm your email before signing in. Check your inbox or request a new link."
+        resp = _auth_response(False, message=msg, redirect_to="", status=403)
+        return resp if resp is not None else render_template("login.html")
+
     login_user(user, remember=True)
     target = session.pop("post_login_next", None) or url_for("index")
     # Only allow same-origin relative redirects from the stored return target.
@@ -180,8 +205,128 @@ def me():
     return jsonify({"authenticated": False, "user": None})
 
 
+# ---------------------------------------------------------------------------
+# Email verification + password reset (signed, expiring links — see tokens.py)
+# ---------------------------------------------------------------------------
+
+
+def _external_url(endpoint: str, **values) -> str:
+    """Absolute URL for an email link, honoring PUBLIC_BASE_URL when set."""
+    base = (current_app.config.get("PUBLIC_BASE_URL") or "").rstrip("/")
+    if base:
+        return base + url_for(endpoint, **values)
+    return url_for(endpoint, _external=True, **values)
+
+
+def _send_verification(user: User) -> None:
+    """Mail a fresh email-confirmation link to ``user`` (best effort)."""
+    token = make_token(PURPOSE_VERIFY, user.id)
+    email_utils.send_email_verification(
+        user.email, _external_url("auth.verify_email", token=token)
+    )
+
+
+def _reset_user_from_token(token: str):
+    """Resolve a reset token to its user, binding it to the current password.
+
+    The token payload carries a slice of the password hash, so it is **single
+    use**: once the password changes (or was already changed), the slice no
+    longer matches and the link stops working.
+    """
+    payload = read_token(
+        PURPOSE_RESET, token, max_age=current_app.config["RESET_TOKEN_MAX_AGE"]
+    )
+    if not isinstance(payload, dict):
+        return None
+    user = db.session.get(User, payload.get("uid"))
+    if user is None or payload.get("h") != user.password_hash[-20:]:
+        return None
+    return user
+
+
+@auth_bp.route("/verify-email/<token>", methods=["GET"])
+def verify_email(token):
+    user_id = read_token(
+        PURPOSE_VERIFY, token, max_age=current_app.config["VERIFY_TOKEN_MAX_AGE"]
+    )
+    user = db.session.get(User, user_id) if user_id else None
+    if user is None:
+        flash("That confirmation link is invalid or has expired.", "error")
+        return redirect(url_for("auth.login"))
+    if not user.email_verified:
+        user.email_verified = True
+        user.verified_at = datetime.utcnow()
+        db.session.commit()
+    flash("Email confirmed — you're all set.", "info")
+    return redirect(url_for("index") if current_user.is_authenticated else url_for("auth.login"))
+
+
+@auth_bp.route("/resend-verification", methods=["POST"])
+@login_required
+@limiter.limit(lambda: _auth_limit())
+def resend_verification():
+    if current_user.email_verified:
+        return jsonify({"success": True, "message": "Email already confirmed."})
+    _send_verification(current_user)
+    if _wants_json():
+        return jsonify({"success": True, "message": "Confirmation email sent."})
+    flash("Confirmation email sent.", "info")
+    return redirect(url_for("index"))
+
+
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+@limiter.limit(lambda: _auth_limit())
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+    if request.method == "GET":
+        return render_template("forgot_password.html")
+
+    data = request.get_json(silent=True) if request.is_json else request.form
+    email, _ = _normalize_email((data or {}).get("email", ""))
+    user = User.query.filter_by(email=email).first() if email else None
+    if user is not None:
+        token = make_token(PURPOSE_RESET, {"uid": user.id, "h": user.password_hash[-20:]})
+        email_utils.send_password_reset(
+            user.email, _external_url("auth.reset_password", token=token)
+        )
+    # Same response whether or not the email exists — no account enumeration.
+    msg = "If that email has an account, a reset link is on its way."
+    if _wants_json():
+        return jsonify({"success": True, "message": msg})
+    flash(msg, "info")
+    return redirect(url_for("auth.login"))
+
+
+@auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
+@limiter.limit(lambda: _auth_limit())
+def reset_password(token):
+    user = _reset_user_from_token(token)
+    if user is None:
+        flash("That reset link is invalid or has expired. Request a new one.", "error")
+        return redirect(url_for("auth.forgot_password"))
+
+    if request.method == "GET":
+        return render_template("reset_password.html", token=token)
+
+    data = request.get_json(silent=True) if request.is_json else request.form
+    password = (data or {}).get("password") or ""
+    if len(password) < MIN_PASSWORD_LENGTH:
+        msg = f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
+        if _wants_json():
+            return jsonify({"success": False, "error": msg}), 400
+        flash(msg, "error")
+        return render_template("reset_password.html", token=token)
+
+    user.set_password(password)
+    db.session.commit()  # invalidates the (hash-bound) token — single use
+    msg = "Password updated. You can sign in now."
+    if _wants_json():
+        return jsonify({"success": True, "message": msg, "redirect": url_for("auth.login")})
+    flash(msg, "info")
+    return redirect(url_for("auth.login"))
+
+
 def _auth_limit() -> str:
     """Read the auth rate limit from app config at request time."""
-    from flask import current_app
-
     return current_app.config.get("RATELIMIT_AUTH", "20 per hour")

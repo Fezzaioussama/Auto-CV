@@ -108,6 +108,16 @@ class Config:
     WTF_CSRF_ENABLED = _bool("WTF_CSRF_ENABLED", default=True)
     WTF_CSRF_TIME_LIMIT = None  # token valid for the session lifetime
 
+    # --- Email confirmation + reset links ---------------------------------
+    # When on, unverified accounts can register but not sign in until they
+    # confirm their email. Off by default so dev/log-only email still works.
+    REQUIRE_EMAIL_VERIFICATION = _bool("REQUIRE_EMAIL_VERIFICATION", default=False)
+    RESET_TOKEN_MAX_AGE = _int("RESET_TOKEN_MAX_AGE_SECONDS", 3600)        # 1 hour
+    VERIFY_TOKEN_MAX_AGE = _int("VERIFY_TOKEN_MAX_AGE_SECONDS", 86400)     # 24 hours
+    # Absolute base URL for links in emails when there is no request context
+    # (e.g. background jobs). Falls back to request.url_root in handlers.
+    PUBLIC_BASE_URL = _str("PUBLIC_BASE_URL", "")
+
     # --- Database ----------------------------------------------------------
     SQLALCHEMY_DATABASE_URI = _str(
         "DATABASE_URL",
@@ -122,6 +132,9 @@ class Config:
     # Tighter budget for expensive endpoints (LLM calls / PDF compilation).
     RATELIMIT_LLM = _str("RATELIMIT_LLM", "40 per hour")
     RATELIMIT_AUTH = _str("RATELIMIT_AUTH", "20 per hour")
+    # The public, no-login demo runs an LLM call per request, so keep it tight
+    # (keyed by client IP). Encourages sign-up rather than free unlimited use.
+    RATELIMIT_DEMO = _str("RATELIMIT_DEMO", "5 per day")
     RATELIMIT_ENABLED = _bool("RATELIMIT_ENABLED", default=True)
 
     # --- Uploads -----------------------------------------------------------

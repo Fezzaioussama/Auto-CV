@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live demo | Auto-CV</title>
+    <meta name="description" content="Try Auto-CV free — see how your CV matches a job offer in seconds. No sign-up needed for the demo.">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/style.css?v=5">
+    <link rel="stylesheet" href="/static/features.css?v=1">
+</head>
+<body>
+    <nav class="nav" id="navbar">
+        <div class="shell nav-inner">
+            <a class="brand" href="/">
+                <span class="logo logo-image"><img src="/static/assets/autocv-logo.png" alt="" aria-hidden="true"></span>
+                <span class="name">Auto<span>CV</span></span>
+            </a>
+            <div class="nav-links">
+                <a class="navlink" href="/#app">Optimizer</a>
+                <a class="navlink" href="/how-it-works">How it works</a>
+                <span id="navAuth" class="nav-auth"></span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="section" style="padding-top: 110px;">
+        <div class="shell" style="max-width: 900px;">
+            <div class="section-head">
+                <div class="kicker">Free demo · no sign-up</div>
+                <h2>See how your CV matches an offer</h2>
+                <p>Paste a job description below. We'll analyse the match against a sample CV — or paste your
+                own. Editing, rewriting and PDF/Word export unlock when you create a free account.</p>
+            </div>
+
+            <div class="card p-4">
+                <label class="form-label fw-semibold">Job description</label>
+                <textarea class="form-control mb-3" id="jobText" rows="7"
+                          placeholder="Paste the job offer here…"></textarea>
+
+                <details class="mb-3">
+                    <summary style="cursor:pointer;">Optional: paste your own CV text instead of the sample</summary>
+                    <textarea class="form-control mt-2" id="cvText" rows="6"
+                              placeholder="Paste your CV as plain text or LaTeX (optional)"></textarea>
+                </details>
+
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <button class="btn btn-primary" id="runBtn"><i class="bi bi-stars"></i> Analyse match</button>
+                    <button class="btn btn-outline-secondary" id="sampleBtn">Load a sample offer</button>
+                    <span id="demoStatus" class="text-muted"></span>
+                </div>
+            </div>
+
+            <div id="result" class="mt-4" style="display:none;">
+                <div class="card p-4">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <h4 class="mb-0">Match score</h4>
+                        <span id="score" class="badge bg-primary" style="font-size:1.1rem;">—</span>
+                    </div>
+                    <div id="usedSample" class="text-muted small mt-1"></div>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <h6 class="text-success"><i class="bi bi-check2-circle"></i> Matched skills</h6>
+                            <div id="matched"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-danger"><i class="bi bi-exclamation-circle"></i> Missing / to add</h6>
+                            <div id="missing"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card p-4 mt-3 text-center" style="background:#f6f8ff;">
+                    <h5>Want the rewritten CV, cover letter and PDF/Word export?</h5>
+                    <p class="text-muted">Create a free account to tailor and download your CV.</p>
+                    <div>
+                        <a class="btn btn-primary" href="/register">Create free account</a>
+                        <a class="btn btn-outline-secondary" href="/login">Sign in</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer"><div class="shell"><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></div></footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/csrf.js?v=1"></script>
+    <script src="/static/features.js?v=1"></script>
+    <script>
+    (function () {
+        const $ = (id) => document.getElementById(id);
+        const chip = (t) => `<span class="badge rounded-pill bg-light text-dark border me-1 mb-1">${t}</span>`;
+        function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+        $('sampleBtn').addEventListener('click', async () => {
+            try {
+                const data = await (await fetch('/api/sample-job')).json();
+                $('jobText').value = (data.job && data.job.text || '').trim();
+            } catch (e) {}
+        });
+
+        $('runBtn').addEventListener('click', async () => {
+            const job = $('jobText').value.trim();
+            if (!job) { $('demoStatus').textContent = 'Paste a job description first.'; return; }
+            $('runBtn').disabled = true;
+            $('demoStatus').textContent = 'Analysing…';
+            try {
+                const r = await fetch('/api/demo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_text: job, cv_latex: $('cvText').value.trim() }),
+                });
+                const data = await r.json();
+                if (!r.ok) {
+                    $('demoStatus').textContent = data.error ||
+                        (r.status === 429 ? 'Demo limit reached for today — sign up to keep going.' : 'Something went wrong.');
+                    return;
+                }
+                const a = data.analysis || {};
+                const sm = a.skills_match || {};
+                $('score').textContent = (a.overall_score ?? a.match_percentage ?? '—') + '%';
+                $('usedSample').textContent = data.used_sample_cv
+                    ? 'Analysed against a built-in sample CV. Paste your own above for a personalised result.'
+                    : 'Analysed against the CV you provided.';
+                $('matched').innerHTML = (sm.matched || []).slice(0, 20).map(s => chip(esc(s))).join('') || '<span class="text-muted">—</span>';
+                $('missing').innerHTML = (sm.missing || []).slice(0, 20).map(s => chip(esc(s))).join('') || '<span class="text-muted">None — great coverage!</span>';
+                $('result').style.display = 'block';
+                $('demoStatus').textContent = '';
+                $('result').scrollIntoView({ behavior: 'smooth' });
+            } catch (e) {
+                $('demoStatus').textContent = 'Network error. Please try again.';
+            } finally {
+                $('runBtn').disabled = false;
+            }
+        });
+    })();
+    </script>
+</body>
+</html>
