@@ -28,12 +28,20 @@ except ImportError:  # pragma: no cover
 
 VALID_DOMAINS = ("coding", "system_design", "technical", "behavioral")
 VALID_LEVELS = ("junior", "mid", "senior")
+VALID_SESSION_GOALS = ("balanced", "weak_spots", "final_mock", "technical_deep_dive")
 
 DOMAIN_LABELS = {
     "coding": "Coding",
     "system_design": "System Design",
     "technical": "Technical",
     "behavioral": "Behavioral",
+}
+
+SESSION_GOAL_LABELS = {
+    "balanced": "Balanced preparation",
+    "weak_spots": "Weak spot repair",
+    "final_mock": "Final mock interview",
+    "technical_deep_dive": "Technical deep dive",
 }
 
 
@@ -198,6 +206,72 @@ def _normalize_level(level) -> Optional[str]:
     return level if level in VALID_LEVELS else None
 
 
+def _normalize_session_goal(goal) -> str:
+    if not goal:
+        return "balanced"
+    goal = str(goal).strip().lower().replace("-", "_")
+    aliases = {
+        "weak": "weak_spots",
+        "weakness": "weak_spots",
+        "weaknesses": "weak_spots",
+        "mock": "final_mock",
+        "final": "final_mock",
+        "technical": "technical_deep_dive",
+        "deep_dive": "technical_deep_dive",
+    }
+    goal = aliases.get(goal, goal)
+    return goal if goal in VALID_SESSION_GOALS else "balanced"
+
+
+def _as_clean_list(value, limit: int = 6) -> List[str]:
+    if isinstance(value, list):
+        items = value
+    elif isinstance(value, str) and value.strip():
+        items = [value]
+    else:
+        items = []
+    cleaned = [str(item).strip() for item in items if str(item).strip()]
+    return cleaned[:limit]
+
+
+def _default_session_plan(domains: List[str], count: int, goal: str) -> Dict:
+    domain_labels = [DOMAIN_LABELS.get(domain, domain.replace("_", " ").title()) for domain in domains]
+    minutes = max(25, min(120, count * 9))
+    return {
+        "goal": goal,
+        "goal_label": SESSION_GOAL_LABELS.get(goal, "Balanced preparation"),
+        "estimated_duration_minutes": minutes,
+        "focus_areas": [
+            f"Practise {', '.join(domain_labels).lower()} questions with answers tied to the CV and offer.",
+            "Prepare concise stories that show ownership, impact, and technical depth.",
+        ],
+        "risk_areas": [
+            "Answers that stay generic instead of proving fit for the target role.",
+            "Missing complexity, trade-off, or impact details when discussing technical work.",
+        ],
+        "practice_strategy": [
+            "Answer each question out loud, then rewrite the answer with stronger evidence.",
+            "Use the review score and negative points to decide the next question to repeat.",
+        ],
+    }
+
+
+def _clean_session_plan(raw, domains: List[str], count: int, goal: str) -> Dict:
+    plan = _default_session_plan(domains, count, goal)
+    if not isinstance(raw, dict):
+        return plan
+
+    try:
+        minutes = int(round(float(raw.get("estimated_duration_minutes", plan["estimated_duration_minutes"]))))
+    except (TypeError, ValueError):
+        minutes = plan["estimated_duration_minutes"]
+    plan["estimated_duration_minutes"] = max(15, min(180, minutes))
+    plan["focus_areas"] = _as_clean_list(raw.get("focus_areas"), 6) or plan["focus_areas"]
+    plan["risk_areas"] = _as_clean_list(raw.get("risk_areas"), 6) or plan["risk_areas"]
+    plan["practice_strategy"] = _as_clean_list(raw.get("practice_strategy"), 6) or plan["practice_strategy"]
+    return plan
+
+
 # ---------------------------------------------------------------------------
 # Question generation
 # ---------------------------------------------------------------------------
@@ -272,7 +346,12 @@ Respond with EXACTLY this JSON shape (and only this):
 
 
 def _fallback_questions(
-    cv_text: str, job_text: str, level: Optional[str], domains: List[str], count: int
+    cv_text: str,
+    job_text: str,
+    level: Optional[str],
+    domains: List[str],
+    count: int,
+    session_goal: str = "balanced",
 ) -> Dict:
     """Deterministic, model-free questions so the page still works offline."""
     lvl = level or "mid"
@@ -299,6 +378,8 @@ def _fallback_questions(
             "starter_code": "def solve(records):\n    # your code here\n    pass\n",
             "rationale": f"The offer emphasises {skill}; this checks hands-on coding ability.",
             "evaluation_criteria": ["Correctness", "Time/space complexity", "Readability"],
+            "target_signal": "You can translate role requirements into working, readable code.",
+            "coach_tip": "State assumptions, solve the core case first, then discuss complexity and edge cases.",
         },
         "system_design": {
             "title": "Design a scalable service",
@@ -310,6 +391,8 @@ def _fallback_questions(
             "starter_code": "",
             "rationale": "The offer implies production systems at scale.",
             "evaluation_criteria": ["Clear components", "Scaling story", "Trade-off reasoning"],
+            "target_signal": "You can reason about architecture, scale, reliability, and trade-offs.",
+            "coach_tip": "Start with requirements, draw the main components, then explain bottlenecks and failures.",
         },
         "technical": {
             "title": f"Deep-dive on {skill}",
@@ -318,6 +401,8 @@ def _fallback_questions(
             "starter_code": "",
             "rationale": f"{skill} appears in the offer's requirements.",
             "evaluation_criteria": ["Depth of understanding", "Real experience"],
+            "target_signal": "You have hands-on depth instead of only keyword familiarity.",
+            "coach_tip": "Answer with one concrete project example, one pitfall, and one production lesson.",
         },
         "behavioral": {
             "title": "Tell me about a hard project",
@@ -329,6 +414,8 @@ def _fallback_questions(
             "starter_code": "",
             "rationale": "Validates the experience claimed in the CV.",
             "evaluation_criteria": ["Structured (STAR)", "Concrete impact", "Ownership"],
+            "target_signal": "You can prove ownership, collaboration, and measurable impact.",
+            "coach_tip": "Use Situation, Task, Action, Result, and include numbers or visible outcomes.",
         },
     }
     questions = []
@@ -342,6 +429,7 @@ def _fallback_questions(
     return {
         "detected_level": lvl,
         "role_title": "Target role",
+        "session_plan": _default_session_plan(domains, count, session_goal),
         "questions": questions[:count],
         "fallback": True,
     }
@@ -382,6 +470,8 @@ def _clean_questions(
                 "language": str(q.get("language") or "").strip().lower(),
                 "starter_code": str(q.get("starter_code") or ""),
                 "evaluation_criteria": [str(c).strip() for c in crit if str(c).strip()],
+                "target_signal": str(q.get("target_signal") or "").strip(),
+                "coach_tip": str(q.get("coach_tip") or "").strip(),
             }
         )
     return cleaned
@@ -405,6 +495,10 @@ _PROPOSE_SYSTEM = (
 
 _PROPOSE_SCHEMA = (
     '{"detected_level":"junior|mid|senior","role_title":"short title",'
+    '"session_plan":{"estimated_duration_minutes":60,'
+    '"focus_areas":["skills/stories to prepare"],'
+    '"risk_areas":["negative point or gap likely to block the role"],'
+    '"practice_strategy":["how to use this session"]},'
     '"questions":[{"domain":"coding|system_design|technical|behavioral",'
     '"level":"junior|mid|senior","title":"<=8 words","question":"full text",'
     '"rationale":"why, citing the CV or offer","language":"coding only, else empty"}]}'
@@ -418,6 +512,8 @@ _ENRICH_SYSTEM = (
 
 _ENRICH_SCHEMA = (
     '{"evaluation_criteria":["what a strong answer shows"],'
+    '"target_signal":"specific signal the interviewer wants to see",'
+    '"coach_tip":"short preparation advice before answering",'
     '"language":"coding only, else empty",'
     '"starter_code":"coding: signature/skeleton ONLY (never the solution); '
     'system_design: optional scaffold; else empty",'
@@ -425,23 +521,29 @@ _ENRICH_SCHEMA = (
 )
 
 
-def _build_propose_prompt(cv_text, job_text, level, domains, count, extra_instructions=None):
+def _build_propose_prompt(cv_text, job_text, level, domains, count, extra_instructions=None, session_goal="balanced"):
     level_line = (
         f"Target seniority: {level.upper()}." if level
         else "Infer the seniority (junior/mid/senior) from the CV and offer."
     )
+    goal_label = SESSION_GOAL_LABELS.get(session_goal, SESSION_GOAL_LABELS["balanced"])
     custom = ""
     if extra_instructions and extra_instructions.strip():
         custom = "\nEXTRA USER INSTRUCTIONS (follow closely):\n" + extra_instructions.strip() + "\n"
     return f"""{level_line}
 
 Propose exactly {count} interview questions, spread as evenly as possible across these domains: {", ".join(domains)}. Return all {count}.
+Session goal: {goal_label}.
 
 Rules:
 - Each question MUST be justified by the CV and/or the offer (say why in "rationale").
 - For coding questions, set "language" to one present in the CV or offer; otherwise "".
 - Do NOT include starter code or evaluation criteria here — only the question itself.
 - Scale difficulty to the seniority.
+- Also produce a "session_plan" that tells the candidate what to prepare, which negative points or gaps could hurt their chance for this role, and how to practise across the session.
+- If the session goal is weak spot repair, focus on missing skills, vague CV claims, and role-fit risks.
+- If the session goal is final mock interview, make the flow realistic and mixed, as if the real interview is soon.
+- If the session goal is technical deep dive, prioritise deeper implementation, architecture, complexity, and production trade-offs.
 {custom}
 === CANDIDATE CV ===
 {cv_text or "(no CV — base questions on the offer only)"}
@@ -466,6 +568,8 @@ JOB CONTEXT (for relevance):
 
 Produce:
 - 2-4 concrete "evaluation_criteria" (what a strong answer demonstrates).
+- A short "target_signal": the exact proof/signal the interviewer is looking for.
+- A short "coach_tip": how the candidate should structure or improve their answer.
 - CODING question: a "starter_code" skeleton (function signature / skeleton only, NEVER the solution) and confirm "language".
 - SYSTEM_DESIGN question: an optional short "starter_code" scaffold (e.g. the constraints to address), else "".
 - technical/behavioral: leave "starter_code" and "language" empty.
@@ -474,7 +578,7 @@ Respond with ONLY this JSON shape:
 {_ENRICH_SCHEMA}"""
 
 
-def _propose_questions(cv_text, job_text, level, domains, count, extra_instructions, min_acceptable):
+def _propose_questions(cv_text, job_text, level, domains, count, extra_instructions, session_goal, min_acceptable):
     """Stage 1: one validated+repaired call returning the bare question list."""
     def _validate(obj):
         if not isinstance(obj, dict):
@@ -489,14 +593,14 @@ def _propose_questions(cv_text, job_text, level, domains, count, extra_instructi
         return True, ""
 
     obj, meta = request_json(
-        _build_propose_prompt(cv_text, job_text, level, domains, count, extra_instructions),
+        _build_propose_prompt(cv_text, job_text, level, domains, count, extra_instructions, session_goal),
         system_prompt=_PROPOSE_SYSTEM,
         expect="object",
         validate=_validate,
         schema_hint=_PROPOSE_SCHEMA,
         task=Task.INTERVIEW,
         temperature=0.3,
-        max_tokens=2000,
+        max_tokens=3200,
         repair_attempts=2,
         log_prefix="interview:propose",
     )
@@ -514,7 +618,7 @@ def _enrich_question(question, job_text):
         schema_hint=_ENRICH_SCHEMA,
         task=Task.INTERVIEW,
         temperature=0.2,
-        max_tokens=900,
+        max_tokens=1100,
         repair_attempts=1,
         log_prefix="interview:enrich",
     )
@@ -528,6 +632,7 @@ def generate_questions(
     domains: Optional[List[str]] = None,
     count: int = 6,
     extra_instructions: Optional[str] = None,
+    session_goal: str = "balanced",
 ) -> Dict:
     """Generate interview questions grounded in the CV and the job offer.
 
@@ -544,8 +649,9 @@ def generate_questions(
     job_text = summarize_job(job_description or "")
     level = _normalize_level(level)
     domains = _normalize_domains(domains)
+    session_goal = _normalize_session_goal(session_goal)
     try:
-        count = max(1, min(int(count), 15))
+        count = max(1, min(int(count), 20))
     except (TypeError, ValueError):
         count = 6
 
@@ -553,12 +659,12 @@ def generate_questions(
 
     def _fallback(reason: str) -> Dict:
         print(f"[interview-agent] proposal failed ({reason}); using offline templates", flush=True)
-        result = _fallback_questions(cv_text, job_text, level, domains, count)
+        result = _fallback_questions(cv_text, job_text, level, domains, count, session_goal)
         result["error"] = reason
         return result
 
     proposed = _propose_questions(
-        cv_text, job_text, level, domains, count, extra_instructions, min_acceptable
+        cv_text, job_text, level, domains, count, extra_instructions, session_goal, min_acceptable
     )
     if not isinstance(proposed, dict):
         return _fallback("model returned no usable question list")
@@ -615,11 +721,14 @@ def generate_questions(
             "language": str(enr.get("language") or q["language"] or "").strip().lower(),
             "starter_code": str(enr.get("starter_code") or ""),
             "evaluation_criteria": [str(c).strip() for c in crit if str(c).strip()],
+            "target_signal": str(enr.get("target_signal") or "").strip(),
+            "coach_tip": str(enr.get("coach_tip") or "").strip(),
         })
 
     return {
         "detected_level": detected or level or "mid",
         "role_title": str(proposed.get("role_title") or "Target role").strip(),
+        "session_plan": _clean_session_plan(proposed.get("session_plan"), domains, count, session_goal),
         "questions": questions[:count],
         "fallback": False,
     }
@@ -631,9 +740,11 @@ def generate_questions(
 
 
 _REVIEW_SYSTEM = (
-    "You are a rigorous but encouraging technical interviewer reviewing a "
-    "candidate's answer. For coding answers you analyse correctness and "
-    "time/space complexity and you provide a cleaner, more OPTIMIZED version. "
+    "You are a rigorous interview coach reviewing a candidate's answer for a "
+    "specific target role. You identify strengths, negative points, role-fit "
+    "risks, and the next practice actions that will improve the candidate's "
+    "chance of passing. For coding answers you analyse correctness and "
+    "time/space complexity and provide a cleaner, more OPTIMIZED version. "
     "You respond ONLY with a single valid JSON object — no prose, no markdown "
     "fences, no <think> blocks."
 )
@@ -673,6 +784,11 @@ CANDIDATE ANSWER:
 {answer}
 '''
 
+Coach requirements:
+- Be specific about negative points: vague claims, missing evidence, incorrect reasoning, weak role fit, or missing trade-offs.
+- Give priority actions that the candidate can practise before the real interview.
+- Tie role-fit risks to the job context whenever possible.
+
 Respond with this exact JSON shape (omit coding-only fields for non-coding questions by leaving them empty):
 {{
   "score": 0-100,
@@ -680,6 +796,11 @@ Respond with this exact JSON shape (omit coding-only fields for non-coding quest
   "summary": "2-3 sentence assessment",
   "strengths": ["..."],
   "improvements": ["concrete, actionable suggestions"],
+  "negative_points": ["specific weak signals, gaps, or mistakes that could hurt this interview"],
+  "priority_actions": ["specific practice actions before the real interview"],
+  "role_fit_risks": ["target-role requirement not yet proven by this answer"],
+  "readiness_signal": "positive|neutral|negative plus one short reason",
+  "next_practice": "one focused thing to practise next",
   "follow_up_questions": ["a question an interviewer would ask next"],
   "model_answer": "a concise example of a strong answer",
   "is_coding": {str(is_coding).lower()},
@@ -705,6 +826,16 @@ def _fallback_review(question: Dict, answer: str) -> Dict:
             "Add concrete detail and structure.",
             "For coding, state your time/space complexity explicitly.",
         ],
+        "negative_points": [
+            "The answer is not yet assessed against the actual role because the AI reviewer was unavailable.",
+        ],
+        "priority_actions": [
+            "Re-run the review when the model is available.",
+            "Add evidence, trade-offs, and measurable impact before practising again.",
+        ],
+        "role_fit_risks": [],
+        "readiness_signal": "neutral — heuristic review only",
+        "next_practice": "Repeat the answer with a clear structure and stronger proof.",
         "follow_up_questions": [],
         "model_answer": "",
         "is_coding": question.get("domain") == "coding",
@@ -733,6 +864,11 @@ def review_answer(
             "summary": "Write an answer or some code, then request a review.",
             "strengths": [],
             "improvements": ["Submit an answer first."],
+            "negative_points": ["No signal yet: the interviewer has no evidence to evaluate."],
+            "priority_actions": ["Write an answer with structure, examples, and role-specific evidence."],
+            "role_fit_risks": [],
+            "readiness_signal": "negative — no answer submitted",
+            "next_practice": "Draft a first answer, then request a review.",
             "follow_up_questions": [],
             "model_answer": "",
             "is_coding": question.get("domain") == "coding",
@@ -758,13 +894,6 @@ def review_answer(
     if not isinstance(parsed, dict):
         return _fallback_review(question, answer)
 
-    def _as_list(value):
-        if isinstance(value, list):
-            return [str(v).strip() for v in value if str(v).strip()]
-        if isinstance(value, str) and value.strip():
-            return [value.strip()]
-        return []
-
     try:
         score = int(round(float(parsed.get("score", 0))))
     except (TypeError, ValueError):
@@ -779,9 +908,14 @@ def review_answer(
         "score": score,
         "verdict": str(parsed.get("verdict") or "").strip(),
         "summary": str(parsed.get("summary") or "").strip(),
-        "strengths": _as_list(parsed.get("strengths")),
-        "improvements": _as_list(parsed.get("improvements")),
-        "follow_up_questions": _as_list(parsed.get("follow_up_questions")),
+        "strengths": _as_clean_list(parsed.get("strengths")),
+        "improvements": _as_clean_list(parsed.get("improvements")),
+        "negative_points": _as_clean_list(parsed.get("negative_points")),
+        "priority_actions": _as_clean_list(parsed.get("priority_actions")),
+        "role_fit_risks": _as_clean_list(parsed.get("role_fit_risks")),
+        "readiness_signal": str(parsed.get("readiness_signal") or "").strip(),
+        "next_practice": str(parsed.get("next_practice") or "").strip(),
+        "follow_up_questions": _as_clean_list(parsed.get("follow_up_questions")),
         "model_answer": str(parsed.get("model_answer") or "").strip(),
         "is_coding": bool(parsed.get("is_coding")) or question.get("domain") == "coding",
         "correctness": str(parsed.get("correctness") or "n/a").strip(),

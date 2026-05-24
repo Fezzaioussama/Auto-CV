@@ -220,6 +220,7 @@ def interview_questions():
             domains=data.get("domains"),
             count=data.get("count", 6),
             extra_instructions=data.get("extra_instructions"),
+            session_goal=data.get("session_goal"),
         )
         return jsonify({"success": True, **result})
     except Exception as e:  # noqa: BLE001

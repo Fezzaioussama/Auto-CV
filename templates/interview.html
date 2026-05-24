@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interview Prep | Auto-CV</title>
-    <meta name="description" content="An AI interview coach that asks questions grounded in your CV and the job offer — coding, system design, technical and behavioral — and reviews your answers with an optimized rewrite.">
+    <meta name="description" content="An AI interview coach that builds role-grounded sessions, tracks answer evolution, surfaces weak points, and reviews coding, system design, technical, and behavioral answers.">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Fonts -->
@@ -18,7 +18,7 @@
     <!-- CodeMirror CSS is loaded lazily from interview.js so a slow/blocked CDN
          can never delay the page or its buttons. -->
     <link rel="stylesheet" href="/static/style.css?v=5">
-    <link rel="stylesheet" href="/static/interview.css?v=4">
+    <link rel="stylesheet" href="/static/interview.css?v=5">
 </head>
 <body>
 
@@ -45,9 +45,9 @@
         <div class="shell hero-inner">
             <span class="eyebrow reveal in"><span class="dot"></span> AI interview coach &middot; CV-aware &middot; Offer-aware</span>
             <h1 class="reveal in d1">Walk into the interview <span class="grad-word">already prepared.</span></h1>
-            <p class="lead reveal in d2">Your CV and the job offer become a tailored mock interview — coding, system design, technical and behavioral questions. Answer in a real code editor and get an instant review with an <b>optimized</b> rewrite and complexity analysis.</p>
+            <p class="lead reveal in d2">Your CV and the job offer become a full coaching session — targeted questions, preparation plan, answer reviews, weak-point tracking, and a readiness view for the role.</p>
             <div class="hero-cta reveal in d3">
-                <a href="#setup" id="heroGenerate" class="btn btn-cta"><i class="bi bi-mic"></i> Generate my questions</a>
+                <a href="#setup" id="heroGenerate" class="btn btn-cta"><i class="bi bi-mic"></i> Start coaching session</a>
                 <a href="/#app" class="btn btn-ghost-light"><i class="bi bi-arrow-left"></i> Back to optimizer</a>
             </div>
         </div>
@@ -82,7 +82,7 @@
 
                     <!-- Controls -->
                     <div class="form-section">
-                        <h3><i class="bi bi-toggles"></i> Tune the questions</h3>
+                        <h3><i class="bi bi-toggles"></i> Tune the session</h3>
 
                         <div class="control-block">
                             <label class="control-label">Seniority level</label>
@@ -96,6 +96,16 @@
                         </div>
 
                         <div class="control-block">
+                            <label class="control-label">Session focus</label>
+                            <div class="seg seg-wide" id="goalSeg" role="tablist">
+                                <button class="seg-btn active" data-goal="balanced"><i class="bi bi-compass"></i> Balanced</button>
+                                <button class="seg-btn" data-goal="weak_spots"><i class="bi bi-wrench-adjustable"></i> Weak spots</button>
+                                <button class="seg-btn" data-goal="final_mock"><i class="bi bi-stopwatch"></i> Final mock</button>
+                                <button class="seg-btn" data-goal="technical_deep_dive"><i class="bi bi-cpu"></i> Deep dive</button>
+                            </div>
+                        </div>
+
+                        <div class="control-block">
                             <label class="control-label">Question domains</label>
                             <div class="chips" id="domainChips">
                                 <label class="chip"><input type="checkbox" value="coding" checked> <i class="bi bi-code-square"></i> Coding</label>
@@ -106,8 +116,8 @@
                         </div>
 
                         <div class="control-block">
-                            <label class="control-label">How many questions: <span id="countValue" class="count-badge">6</span></label>
-                            <input type="range" class="form-range count-range" id="countRange" min="3" max="12" value="6">
+                            <label class="control-label">How many questions: <span id="countValue" class="count-badge">10</span></label>
+                            <input type="range" class="form-range count-range" id="countRange" min="5" max="20" value="10">
                         </div>
 
                         <div class="control-block">
@@ -118,7 +128,7 @@
 
                         <div class="d-flex flex-wrap gap-2 mt-2">
                             <button type="button" class="btn btn-success btn-lg" id="generateBtn">
-                                <i class="bi bi-stars"></i> Generate interview questions
+                                <i class="bi bi-stars"></i> Generate coaching session
                             </button>
                             <button type="button" class="btn btn-outline-secondary" id="demoBtn">
                                 <i class="bi bi-shuffle"></i> Load a demo CV + offer
@@ -128,6 +138,9 @@
 
                     <!-- Session summary -->
                     <div id="sessionSummary" class="session-summary hidden"></div>
+
+                    <!-- AI coach dashboard -->
+                    <div id="coachDashboard" class="coach-dashboard hidden"></div>
 
                     <!-- Questions -->
                     <div id="questionsContainer"></div>
@@ -140,8 +153,8 @@
     <div class="loading" id="loadingIndicator">
         <div>
             <div class="spinner"></div>
-            <h4 id="loadingTitle">Designing your interview…</h4>
-            <p>Grounding every question in your CV and the offer</p>
+            <h4 id="loadingTitle">Designing your coaching session…</h4>
+            <p>Grounding the plan, questions, and coach cues in your CV and the offer</p>
         </div>
     </div>
 
@@ -172,6 +185,6 @@
          buttons work even if external CDNs are slow or blocked. CodeMirror is
          fetched lazily from inside interview.js (with a plain-textarea fallback). -->
     <script src="/static/csrf.js?v=1"></script>
-    <script defer src="/static/interview.js?v=4"></script>
+    <script defer src="/static/interview.js?v=5"></script>
 </body>
 </html>

@@ -7,7 +7,16 @@
 const editors = {};        // qid -> CodeMirror instance (coding questions)
 const questionData = {};    // qid -> question object (sent back to the reviewer)
 let selectedLevel = '';     // '', 'junior', 'mid', 'senior'
+let selectedGoal = 'balanced';
 const toastRegion = document.getElementById('toastRegion');
+
+const sessionState = {
+    roleTitle: '',
+    detectedLevel: '',
+    sessionPlan: null,
+    questions: [],
+    reviews: {},
+};
 
 // CodeMirror language -> mode mapping
 const CM_MODES = {
@@ -74,13 +83,19 @@ function ensureCodeMirror() {
 }
 
 // ---- Init ----
-console.log('[interview.js v4] script loaded');
+console.log('[interview.js v5] script loaded');
 
 function wireButtons() {
     const gen = document.getElementById('generateBtn');
     if (gen) gen.addEventListener('click', generateQuestions);
     const hero = document.getElementById('heroGenerate');
-    if (hero) hero.addEventListener('click', generateQuestions); // href still scrolls to #setup
+    if (hero) hero.addEventListener('click', (event) => {
+        const cv = document.getElementById('cvInput')?.value.trim();
+        const job = document.getElementById('jobInput')?.value.trim();
+        if (!cv && !job) return; // href scrolls to #setup for first-time setup
+        event.preventDefault();
+        generateQuestions();
+    });
     const demo = document.getElementById('demoBtn');
     if (demo) demo.addEventListener('click', loadDemoContext);
     console.log('[interview.js] buttons wired:', { gen: !!gen, hero: !!hero, demo: !!demo });
@@ -89,6 +104,7 @@ function wireButtons() {
 function init() {
     prefillContext();
     wireLevelSelector();
+    wireGoalSelector();
     wireCountRange();
     wireNavbarScroll();
     wireButtons();
@@ -122,6 +138,16 @@ function wireLevelSelector() {
             document.querySelectorAll('#levelSeg .seg-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             selectedLevel = btn.dataset.level || '';
+        });
+    });
+}
+
+function wireGoalSelector() {
+    document.querySelectorAll('#goalSeg .seg-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#goalSeg .seg-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedGoal = btn.dataset.goal || 'balanced';
         });
     });
 }
@@ -209,7 +235,7 @@ async function generateQuestions() {
 
     const extra = (document.getElementById('extraInstructions')?.value || '').trim();
 
-    showLoading('Designing your interview…');
+    showLoading('Designing your coaching session…');
     try {
         const res = await fetch('/api/interview/questions', {
             method: 'POST',
@@ -218,6 +244,7 @@ async function generateQuestions() {
                 cv_latex: cv,
                 job_description: job,
                 level: selectedLevel,
+                session_goal: selectedGoal,
                 domains,
                 count,
                 extra_instructions: extra,
@@ -226,7 +253,7 @@ async function generateQuestions() {
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error || 'Request failed');
         renderSession(data);
-        notify('success', 'Interview ready', `${data.questions.length} questions generated.`);
+        notify('success', 'Coaching session ready', `${data.questions.length} questions generated.`);
     } catch (err) {
         notify('danger', 'Question generation failed', err.message);
     } finally {
@@ -238,21 +265,34 @@ function renderSession(data) {
     // Reset state
     Object.keys(editors).forEach(k => delete editors[k]);
     Object.keys(questionData).forEach(k => delete questionData[k]);
+    sessionState.roleTitle = data.role_title || 'Target role';
+    sessionState.detectedLevel = data.detected_level || 'mid';
+    sessionState.sessionPlan = data.session_plan || null;
+    sessionState.questions = data.questions || [];
+    sessionState.reviews = {};
 
     const summary = document.getElementById('sessionSummary');
     const role = escapeHtml(data.role_title || 'Target role');
     const level = escapeHtml((data.detected_level || 'mid'));
+    const plan = data.session_plan || {};
+    const goal = escapeHtml(plan.goal_label || 'Balanced preparation');
+    const duration = plan.estimated_duration_minutes
+        ? `<span class="ss-pill"><i class="bi bi-clock"></i> ${escapeHtml(plan.estimated_duration_minutes)} min</span>`
+        : '';
     const fallbackPill = data.fallback ? '<span class="ss-pill"><i class="bi bi-wifi-off"></i> offline templates</span>' : '';
     summary.innerHTML = `
         <span class="ss-title"><i class="bi bi-clipboard-check"></i> ${role}</span>
         <span class="ss-pill">Level: ${level}</span>
+        <span class="ss-pill">${goal}</span>
         <span class="ss-pill">${data.questions.length} questions</span>
+        ${duration}
         ${fallbackPill}
         <button type="button" class="btn btn-light btn-sm ss-regen" id="regenBtn">
             <i class="bi bi-arrow-repeat"></i> Regenerate
         </button>`;
     summary.classList.remove('hidden');
     document.getElementById('regenBtn').addEventListener('click', generateQuestions);
+    updateCoachDashboard();
 
     // If the model couldn't be used, say so plainly so the output isn't mistaken
     // for real, CV-grounded questions.
@@ -280,6 +320,146 @@ function renderSession(data) {
     summary.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function asArray(value) {
+    if (Array.isArray(value)) return value.filter(Boolean);
+    if (value) return [value];
+    return [];
+}
+
+function listHtml(items, emptyText = '—') {
+    const cleaned = asArray(items).map(x => String(x).trim()).filter(Boolean);
+    if (!cleaned.length) return `<p class="text-muted mb-0">${escapeHtml(emptyText)}</p>`;
+    return `<ul>${cleaned.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>`;
+}
+
+function scoreValue(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+function reviewEntries() {
+    return Object.keys(sessionState.reviews)
+        .map(id => sessionState.reviews[id])
+        .filter(Boolean)
+        .sort((a, b) => (a.question.id || 0) - (b.question.id || 0));
+}
+
+function averageScore(entries) {
+    if (!entries.length) return null;
+    const total = entries.reduce((sum, item) => sum + scoreValue(item.review.score), 0);
+    return Math.round(total / entries.length);
+}
+
+function trendLabel(entries) {
+    if (entries.length < 2) return entries.length ? 'First answer scored' : 'No answers reviewed';
+    const first = scoreValue(entries[0].review.score);
+    const last = scoreValue(entries[entries.length - 1].review.score);
+    const diff = last - first;
+    if (Math.abs(diff) < 3) return 'Stable across reviewed answers';
+    return diff > 0 ? `Evolution +${diff} pts` : `Evolution ${diff} pts`;
+}
+
+function weakestDomain(entries) {
+    if (!entries.length) return 'Not measured yet';
+    const buckets = {};
+    entries.forEach(({ question, review }) => {
+        const label = question.domain_label || question.domain || 'Question';
+        if (!buckets[label]) buckets[label] = [];
+        buckets[label].push(scoreValue(review.score));
+    });
+    return Object.entries(buckets)
+        .map(([label, scores]) => ({
+            label,
+            avg: scores.reduce((sum, score) => sum + score, 0) / scores.length,
+        }))
+        .sort((a, b) => a.avg - b.avg)[0].label;
+}
+
+function topReviewItems(entries, fields, fallback, limit = 5) {
+    const counts = new Map();
+    entries.forEach(({ review }) => {
+        fields.forEach(field => {
+            asArray(review[field]).forEach(item => {
+                const text = String(item).trim();
+                if (!text) return;
+                counts.set(text, (counts.get(text) || 0) + 1);
+            });
+        });
+    });
+    const ranked = Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([text]) => text)
+        .slice(0, limit);
+    return ranked.length ? ranked : asArray(fallback).slice(0, limit);
+}
+
+function scoreTrackHtml() {
+    if (!sessionState.questions.length) return '';
+    return sessionState.questions.map(q => {
+        const item = sessionState.reviews[q.id];
+        const score = item ? scoreValue(item.review.score) : null;
+        const height = score == null ? 12 : Math.max(10, score);
+        const cls = score == null ? 'pending' : scoreClass(score);
+        const title = `Question ${q.id}${score == null ? ': pending' : `: ${score}/100`}`;
+        return `<span class="score-stick ${cls}" style="height:${height}%;" title="${escapeHtml(title)}"><small>${escapeHtml(q.id)}</small></span>`;
+    }).join('');
+}
+
+function updateCoachDashboard() {
+    const dashboard = document.getElementById('coachDashboard');
+    if (!dashboard || !sessionState.questions.length) return;
+
+    const plan = sessionState.sessionPlan || {};
+    const entries = reviewEntries();
+    const answered = entries.length;
+    const total = sessionState.questions.length;
+    const avg = averageScore(entries);
+    const readiness = avg == null ? '—' : avg;
+    const completion = total ? Math.round((answered / total) * 100) : 0;
+    const weakDomain = weakestDomain(entries);
+    const riskItems = topReviewItems(entries, ['negative_points', 'role_fit_risks'], plan.risk_areas || [], 5);
+    const actionItems = topReviewItems(entries, ['priority_actions', 'improvements'], plan.practice_strategy || [], 5);
+    const nextPractice = entries.length
+        ? entries[entries.length - 1].review.next_practice
+        : asArray(plan.practice_strategy)[0];
+
+    dashboard.innerHTML = `
+        <div class="coach-head">
+            <div>
+                <span class="coach-kicker"><i class="bi bi-robot"></i> AI coach</span>
+                <h3>${escapeHtml(sessionState.roleTitle || 'Target role')} readiness</h3>
+            </div>
+            <div class="readiness-ring ${avg == null ? 'pending' : scoreClass(avg)}">
+                <span>${escapeHtml(readiness)}</span>
+                <small>${avg == null ? 'score' : '/ 100'}</small>
+            </div>
+        </div>
+        <div class="coach-metrics">
+            <div class="coach-metric"><b>${answered}/${total}</b><span>Reviewed</span></div>
+            <div class="coach-metric"><b>${completion}%</b><span>Session done</span></div>
+            <div class="coach-metric"><b>${escapeHtml(trendLabel(entries))}</b><span>Evolution</span></div>
+            <div class="coach-metric"><b>${escapeHtml(weakDomain)}</b><span>Weakest area</span></div>
+        </div>
+        <div class="score-track" aria-label="Reviewed answer scores">${scoreTrackHtml()}</div>
+        <div class="coach-panels">
+            <div class="coach-panel">
+                <h4><i class="bi bi-bullseye"></i> Preparation focus</h4>
+                ${listHtml(plan.focus_areas)}
+            </div>
+            <div class="coach-panel risk">
+                <h4><i class="bi bi-exclamation-triangle"></i> Negative points to fix</h4>
+                ${listHtml(riskItems, 'Reviewed weak points will appear here.')}
+            </div>
+            <div class="coach-panel">
+                <h4><i class="bi bi-check2-square"></i> Next actions</h4>
+                ${listHtml(actionItems, 'Review answers to build your action plan.')}
+                ${nextPractice ? `<p class="next-practice"><i class="bi bi-arrow-right"></i> ${escapeHtml(nextPractice)}</p>` : ''}
+            </div>
+        </div>`;
+    dashboard.classList.remove('hidden');
+}
+
 function buildQuestionCard(q) {
     questionData[q.id] = q;
     const card = document.createElement('div');
@@ -288,6 +468,12 @@ function buildQuestionCard(q) {
 
     const criteria = (q.evaluation_criteria || [])
         .map(c => `<span class="crit">${escapeHtml(c)}</span>`).join('');
+    const coachCue = (q.target_signal || q.coach_tip)
+        ? `<div class="q-coach">
+               ${q.target_signal ? `<div><b><i class="bi bi-bullseye"></i> Signal</b><span>${escapeHtml(q.target_signal)}</span></div>` : ''}
+               ${q.coach_tip ? `<div><b><i class="bi bi-lightbulb"></i> Coach tip</b><span>${escapeHtml(q.coach_tip)}</span></div>` : ''}
+           </div>`
+        : '';
 
     let answerArea;
     if (q.domain === 'coding') {
@@ -318,6 +504,7 @@ function buildQuestionCard(q) {
         </div>
         <div class="q-body">${escapeHtml(q.question)}</div>
         ${q.rationale ? `<div class="q-rationale"><i class="bi bi-info-circle"></i> ${escapeHtml(q.rationale)}</div>` : ''}
+        ${coachCue}
         ${criteria ? `<div class="q-criteria">${criteria}</div>` : ''}
         ${answerArea}
         <div class="mt-3">
@@ -389,6 +576,7 @@ async function requestReview(qid) {
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error || 'Request failed');
         renderReview(qid, data.review);
+        rememberReview(qid, data.review);
         notify('success', 'Review complete', 'Feedback is ready below your answer.');
     } catch (err) {
         notify('danger', 'Review failed', err.message);
@@ -399,6 +587,17 @@ async function requestReview(qid) {
 }
 
 function scoreClass(s) { return s >= 70 ? 'good' : s >= 45 ? 'mid' : 'low'; }
+
+function rememberReview(qid, review) {
+    const question = questionData[qid];
+    if (!question || !review) return;
+    sessionState.reviews[qid] = {
+        question,
+        review,
+        reviewedAt: new Date().toISOString(),
+    };
+    updateCoachDashboard();
+}
 
 function renderReview(qid, r) {
     const el = document.getElementById(`review-${qid}`);
@@ -447,6 +646,35 @@ function renderReview(qid, r) {
            </div>`
         : '';
 
+    const coachReview = (
+        asArray(r.negative_points).length ||
+        asArray(r.priority_actions).length ||
+        asArray(r.role_fit_risks).length ||
+        r.readiness_signal ||
+        r.next_practice
+    ) ? `
+        <div class="coach-review">
+            <div class="coach-review-grid">
+                <div class="coach-review-col danger">
+                    <h6><i class="bi bi-exclamation-triangle"></i> Negative points</h6>
+                    ${list(r.negative_points)}
+                </div>
+                <div class="coach-review-col">
+                    <h6><i class="bi bi-check2-square"></i> Priority actions</h6>
+                    ${list(r.priority_actions)}
+                </div>
+                <div class="coach-review-col">
+                    <h6><i class="bi bi-briefcase"></i> Role-fit risks</h6>
+                    ${list(r.role_fit_risks)}
+                </div>
+            </div>
+            ${(r.readiness_signal || r.next_practice) ? `
+                <div class="readiness-note">
+                    ${r.readiness_signal ? `<span><b>Readiness:</b> ${escapeHtml(r.readiness_signal)}</span>` : ''}
+                    ${r.next_practice ? `<span><b>Next practice:</b> ${escapeHtml(r.next_practice)}</span>` : ''}
+                </div>` : ''}
+        </div>` : '';
+
     const fallbackFlag = r.fallback
         ? '<div class="fallback-flag"><i class="bi bi-exclamation-triangle"></i> The AI reviewer was unreachable — this is a heuristic estimate. Try again shortly.</div>'
         : '';
@@ -471,6 +699,7 @@ function renderReview(qid, r) {
                 ${list(r.improvements)}
             </div>
         </div>
+        ${coachReview}
         ${modelBlock}
         ${followUps}`;
     el.classList.remove('hidden');
