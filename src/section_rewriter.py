@@ -79,6 +79,34 @@ SYSTEM_PROMPT = (
 )
 
 
+# Language codes the UI exposes, mapped to the name used in prompts. The model
+# writes prose in this language while leaving proper nouns, technologies, and
+# LaTeX commands untouched.
+LANGUAGE_NAMES = {
+    "en": "English",
+    "fr": "French",
+    "es": "Spanish",
+}
+
+
+def _language_clause(language: str) -> str:
+    """Extra system-prompt instruction enforcing the output language."""
+    code = (language or "en").lower()
+    if code == "en" or code not in LANGUAGE_NAMES:
+        return ""
+    name = LANGUAGE_NAMES[code]
+    return (
+        f"\n- Write ALL prose in {name}, using the tone and conventions of a "
+        f"professional {name} CV. Keep proper nouns, company names, job titles, "
+        f"technologies, and LaTeX commands unchanged; translate only the "
+        f"descriptive wording."
+    )
+
+
+def _system_prompt_for(language: str) -> str:
+    return SYSTEM_PROMPT + _language_clause(language)
+
+
 @dataclass
 class LatexSection:
     """One \\section{...} block of a LaTeX document."""
@@ -280,13 +308,14 @@ def rewrite_section(
     job_description: Union[str, Dict],
     job_text: str,
     analysis: Dict,
+    language: str = "en",
 ) -> Optional[str]:
     """Ask vLLM to rewrite one section body. Returns None on failure."""
     if section.kind == "other":
         return None
 
     prompt = _build_user_prompt(section, job_description, job_text, analysis)
-    raw = _call_vllm(prompt)
+    raw = _call_vllm(prompt, system_prompt=_system_prompt_for(language))
     if not raw:
         return None
 
@@ -318,16 +347,19 @@ def rewrite_cv_sections(
     job_description: Union[str, Dict],
     job_text: str,
     analysis: Dict,
-) -> Tuple[str, List[str]]:
+    language: str = "en",
+) -> Tuple[str, List[str], List[Dict]]:
     """Walk every \\section in the CV and rewrite it via vLLM.
 
-    Returns ``(new_latex, rewritten_titles)``. ``rewritten_titles`` is
-    empty when no section was successfully rewritten — callers can use
-    that as a signal to fall back to the rule-based pipeline.
+    Returns ``(new_latex, rewritten_titles, section_diffs)``.
+    ``rewritten_titles`` is empty when no section was successfully rewritten —
+    callers can use that as a signal to fall back to the rule-based pipeline.
+    ``section_diffs`` carries the per-section ``before``/``after`` bodies so the
+    UI can show a reviewable diff with accept/reject controls.
     """
     preamble, sections, postamble = split_latex(latex)
     if not sections:
-        return latex, []
+        return latex, [], []
 
     total = len(sections)
     workers = min(get_max_workers(), total)
@@ -341,7 +373,9 @@ def rewrite_cv_sections(
         i, section = item
         title = (section.raw_title or "section").strip()
         print(f"[section-rewriter]   → start ({i}/{total}) {title}", flush=True)
-        new_body = rewrite_section(section, job_description, job_text, analysis)
+        new_body = rewrite_section(
+            section, job_description, job_text, analysis, language=language
+        )
         print(f"[section-rewriter]   ✓ done  ({i}/{total}) {title}", flush=True)
         return section, new_body
 
@@ -352,12 +386,20 @@ def rewrite_cv_sections(
         results = list(pool.map(_worker, enumerate(sections, start=1)))
 
     rewritten_titles: List[str] = []
+    section_diffs: List[Dict] = []
     for section, new_body in results:
         if new_body:
+            # Capture the diff before mutating the section body in place.
+            section_diffs.append({
+                "title": section.raw_title,
+                "kind": section.kind,
+                "before": section.body.strip(),
+                "after": new_body.strip(),
+            })
             section.body = "\n" + new_body
             rewritten_titles.append(section.raw_title)
 
-    return assemble(preamble, sections, postamble), rewritten_titles
+    return assemble(preamble, sections, postamble), rewritten_titles, section_diffs
 
 
 # ---------------------------------------------------------------------------
@@ -447,6 +489,7 @@ def propose_additions(
     job_text: str,
     analysis: Dict,
     *,
+    language: str = "en",
     max_items: int = 4,
 ) -> List[Dict]:
     """Ask the LLM for optional new sections/content the CV is missing.
@@ -486,7 +529,7 @@ def propose_additions(
     )
     raw = _call_vllm(
         prompt,
-        system_prompt=PROPOSAL_SYSTEM_PROMPT,
+        system_prompt=PROPOSAL_SYSTEM_PROMPT + _language_clause(language),
         max_tokens=1800,
         temperature=0.3,
         task=Task.PROPOSAL,

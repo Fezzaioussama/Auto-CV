@@ -3,12 +3,25 @@ Job Description Parser Module
 Extracts skills, qualifications, and requirements from job descriptions.
 """
 
+import json
 import re
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.probability import FreqDist
 import string
+
+# LLM-based skill extraction (works for any profession, not just tech). All LLM
+# access is centralized in llm_client; if it is unavailable we fall back to the
+# curated keyword set so the parser keeps working offline.
+try:  # importable both as a bare module (main.py) and as the src package
+    from llm_client import complete, Task
+except ImportError:  # pragma: no cover
+    try:
+        from .llm_client import complete, Task
+    except ImportError:  # pragma: no cover
+        complete = None
+        Task = None
 
 # Download required NLTK data
 try:
@@ -132,23 +145,92 @@ class JobDescriptionParser:
         return sections
     
     def _extract_skills(self, text):
-        """Extract skills from a job description.
+        """Extract the skills/keywords a job offer asks for.
 
-        Matching uses alphanumeric/symbol boundaries instead of a plain
-        substring test, so short skills like ``r``, ``go`` and ``ai`` are only
-        picked up as standalone words — not inside ``are``, ``category`` or
-        ``available`` — while symbol-bearing tokens (``c++``, ``c#``,
-        ``node.js``) still match cleanly.
+        Combines two sources so the parser works for *any* profession, not just
+        software roles:
+
+        1. An LLM pass that reads the offer and lists the concrete skills,
+           tools, and qualifications it requires (nursing, finance, marketing,
+           trades, etc.). This is the primary source.
+        2. The curated technical keyword set, matched with word boundaries, as a
+           deterministic baseline and offline fallback.
+
+        Results are merged (LLM first, preserving order) and de-duplicated.
         """
-        skills_found = set()
-        text_lower = text.lower()
+        rule_skills = self._extract_skills_rule_based(text)
+        llm_skills = self._extract_skills_llm(text)
 
+        merged = []
+        seen = set()
+        for skill in llm_skills + rule_skills:
+            key = re.sub(r"\s+", " ", str(skill).strip().lower())
+            if key and key not in seen:
+                seen.add(key)
+                merged.append(key)
+        return merged[:25]
+
+    def _extract_skills_rule_based(self, text):
+        """Curated keyword matching with alphanumeric/symbol boundaries.
+
+        Short skills like ``r``, ``go`` and ``ai`` are only picked up as
+        standalone words (not inside ``are``/``category``/``available``), while
+        symbol-bearing tokens (``c++``, ``c#``, ``node.js``) still match.
+        """
+        skills_found = []
+        text_lower = text.lower()
         for skill in self.common_skills:
             pattern = r'(?<![a-z0-9+#.])' + re.escape(skill) + r'(?![a-z0-9+#])'
             if re.search(pattern, text_lower):
-                skills_found.add(skill)
+                skills_found.append(skill)
+        return skills_found
 
-        return list(skills_found)
+    def _extract_skills_llm(self, text):
+        """Ask the LLM for the offer's required skills. Returns [] on failure."""
+        if complete is None or Task is None:
+            return []
+        try:
+            raw = complete(
+                (
+                    "Extract the concrete skills, tools, technologies, and "
+                    "qualifications this job offer requires. Include domain "
+                    "skills for ANY profession (e.g. 'patient care', 'IFRS', "
+                    "'Adobe Photoshop', 'CDL license'), not only software. "
+                    "Return a JSON array of short lowercase strings (max 20), "
+                    "no duplicates, no sentences.\n\n"
+                    f"Job offer:\n{text[:4000]}"
+                ),
+                system_prompt=(
+                    "You extract a clean keyword list from a job description. "
+                    "Respond with ONLY a JSON array of strings — no prose, no "
+                    "markdown fences, no <think> tags."
+                ),
+                task=Task.ANALYSIS,
+                temperature=0.1,
+                max_tokens=500,
+                log_prefix="parser",
+            )
+        except Exception:  # noqa: BLE001 - never let extraction crash parsing
+            return []
+        if not raw:
+            return []
+
+        cleaned = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL)
+        start = cleaned.find("[")
+        end = cleaned.rfind("]") + 1
+        if start == -1 or end <= start:
+            return []
+        try:
+            data = json.loads(cleaned[start:end])
+        except (ValueError, TypeError):
+            return []
+        if not isinstance(data, list):
+            return []
+        out = []
+        for item in data:
+            if isinstance(item, str) and item.strip():
+                out.append(item.strip())
+        return out[:20]
     
     def _extract_requirements(self, text):
         """Extract job requirements."""

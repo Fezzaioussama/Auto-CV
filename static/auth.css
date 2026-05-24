@@ -1,0 +1,370 @@
+/* Auth pages (login / register) reuse style.css design tokens. */
+.auth-body {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 28px;
+    background:
+        linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px),
+        linear-gradient(135deg, #08111f 0%, #13243a 48%, #0d3b38 100%);
+    background-size: 34px 34px, 34px 34px, 100% 100%;
+    color: var(--ink);
+    position: relative;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.auth-body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 0 42%, rgba(96, 165, 250, .13) 49%, transparent 56%);
+    animation: authSweep 11s var(--ease) infinite;
+    pointer-events: none;
+}
+
+@keyframes authSweep {
+    0%, 100% { transform: translateX(-18%); opacity: .45; }
+    50% { transform: translateX(18%); opacity: .85; }
+}
+
+.auth-shell {
+    width: min(1020px, 100%);
+    display: grid;
+    grid-template-columns: minmax(330px, 430px) minmax(320px, 1fr);
+    gap: clamp(28px, 5vw, 70px);
+    align-items: center;
+    position: relative;
+    z-index: 1;
+}
+
+.auth-panel {
+    width: 100%;
+    background: rgba(255, 255, 255, .96);
+    border: 1px solid rgba(255, 255, 255, .72);
+    border-radius: var(--radius);
+    padding: clamp(28px, 4vw, 40px);
+    box-shadow: 0 32px 90px rgba(0, 0, 0, .34);
+    animation: authPanelIn .7s var(--ease) both;
+}
+
+@keyframes authPanelIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    margin-bottom: 24px;
+}
+
+.auth-brand .logo {
+    width: 46px;
+    height: 46px;
+}
+
+.auth-title {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: clamp(1.65rem, 3.5vw, 2.15rem);
+    line-height: 1.08;
+    margin: 0 0 8px;
+}
+
+.auth-sub {
+    color: #64748b;
+    font-size: .98rem;
+    margin-bottom: 24px;
+}
+
+.auth-label {
+    font-weight: 700;
+    font-size: .88rem;
+    display: block;
+    margin-bottom: 7px;
+    color: #243041;
+}
+
+.auth-input {
+    min-height: 48px;
+    background: #fbfdff;
+}
+
+.auth-submit {
+    min-height: 50px;
+}
+
+.auth-alert {
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: .9rem;
+}
+
+.auth-alert.error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.auth-alert.info {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.auth-foot {
+    text-align: center;
+    margin: 20px 0 0;
+    color: #64748b;
+    font-size: .92rem;
+}
+
+.auth-side {
+    color: #fff;
+    min-width: 0;
+    display: grid;
+    gap: 22px;
+    animation: authVisualIn .75s var(--ease) .08s both;
+}
+
+@keyframes authVisualIn {
+    from { opacity: 0; transform: translateX(24px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.auth-side-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.auth-side-logo {
+    width: 62px;
+    height: 62px;
+    object-fit: contain;
+    filter: drop-shadow(0 16px 24px rgba(0, 0, 0, .28));
+}
+
+.auth-side-head strong {
+    display: block;
+    font: 800 clamp(1.45rem, 3.2vw, 2.35rem)/1.05 "Plus Jakarta Sans", sans-serif;
+    color: #fff;
+}
+
+.auth-kicker {
+    display: block;
+    color: #93c5fd;
+    font-size: .78rem;
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.auth-art {
+    width: min(420px, 100%);
+    display: block;
+    border-radius: var(--radius);
+    border: 1px solid rgba(255, 255, 255, .16);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, .28);
+    object-fit: cover;
+    animation: rowLift 6.5s var(--ease) infinite;
+}
+
+.auth-preview {
+    width: min(420px, 100%);
+    padding: 22px;
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, .1);
+    border: 1px solid rgba(255, 255, 255, .18);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, .26);
+    backdrop-filter: blur(12px);
+}
+
+.preview-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    color: rgba(255, 255, 255, .7);
+    font-weight: 750;
+}
+
+.preview-top b {
+    color: #fbbf24;
+    font: 800 2rem/1 "Plus Jakarta Sans", sans-serif;
+}
+
+.preview-ring {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.preview-ring span {
+    display: block;
+    height: 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .14);
+    overflow: hidden;
+    position: relative;
+}
+
+.preview-ring span::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: var(--fill, 78%);
+    border-radius: inherit;
+    background: linear-gradient(90deg, #60a5fa, #14b8a6, #fbbf24);
+    animation: barFill 2.6s var(--ease) infinite alternate;
+}
+
+.preview-ring span:nth-child(2)::after { --fill: 62%; animation-delay: .18s; }
+.preview-ring span:nth-child(3)::after { --fill: 88%; animation-delay: .32s; }
+.auth-preview-register .preview-ring span:nth-child(1)::after { --fill: 82%; }
+.auth-preview-register .preview-ring span:nth-child(2)::after { --fill: 70%; }
+.auth-preview-register .preview-ring span:nth-child(3)::after { --fill: 54%; }
+
+@keyframes barFill {
+    from { transform: translateX(-7%); opacity: .82; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.preview-list {
+    display: grid;
+    gap: 10px;
+}
+
+.preview-row {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, .08);
+    color: rgba(255, 255, 255, .78);
+    font-weight: 650;
+    animation: rowLift 5s var(--ease) infinite;
+}
+
+.preview-row:nth-child(2) { animation-delay: .25s; }
+.preview-row:nth-child(3) { animation-delay: .5s; }
+
+.preview-row i {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, .12);
+    color: #93c5fd;
+}
+
+.preview-row.active {
+    background: rgba(20, 184, 166, .16);
+    color: #fff;
+}
+
+.preview-row.active i {
+    color: #34d399;
+}
+
+@keyframes rowLift {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+.auth-flow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: min(420px, 100%);
+}
+
+.flow-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .42);
+}
+
+.flow-dot.active {
+    background: #34d399;
+    box-shadow: 0 0 0 7px rgba(52, 211, 153, .13);
+}
+
+.flow-line {
+    height: 2px;
+    flex: 1;
+    background: linear-gradient(90deg, rgba(52, 211, 153, .8), rgba(96, 165, 250, .35));
+    transform-origin: left;
+    animation: flowLine 2.7s var(--ease) infinite;
+}
+
+@keyframes flowLine {
+    0%, 100% { transform: scaleX(.52); opacity: .5; }
+    50% { transform: scaleX(1); opacity: 1; }
+}
+
+@media (max-width: 820px) {
+    .auth-body {
+        align-items: start;
+        padding: 18px;
+        overflow-y: auto;
+    }
+
+    .auth-shell {
+        grid-template-columns: 1fr;
+        gap: 24px;
+        padding: 10px 0 22px;
+    }
+
+    .auth-panel {
+        max-width: 460px;
+        margin: 0 auto;
+    }
+
+    .auth-side {
+        order: -1;
+        max-width: 460px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .auth-side-head strong {
+        font-size: 1.45rem;
+    }
+}
+
+@media (max-width: 520px) {
+    .auth-body {
+        padding: 14px;
+    }
+
+    .auth-panel {
+        padding: 24px 20px;
+    }
+
+    .auth-side {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-body::before,
+    .auth-panel,
+    .auth-side,
+    .auth-art,
+    .preview-ring span::after,
+    .preview-row,
+    .flow-line {
+        animation: none !important;
+    }
+}

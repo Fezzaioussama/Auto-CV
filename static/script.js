@@ -15,11 +15,16 @@ const latexPreview = document.getElementById('latexPreview');
 const optimizedLatexEditor = document.getElementById('optimizedLatexEditor');
 const pdfPreviewFrame = document.getElementById('pdfPreviewFrame');
 const pdfPreviewStatus = document.getElementById('pdfPreviewStatus');
+const loadingTitle = document.getElementById('loadingTitle');
+const loadingMessage = document.getElementById('loadingMessage');
+const toastRegion = document.getElementById('toastRegion');
 let currentPdfUrl = null;
 
 // Drop zones
 const jobDropZone = document.getElementById('jobDropZone');
 const cvDropZone = document.getElementById('cvDropZone');
+const jobFileInput = document.getElementById('jobFileInput');
+const cvFileInput = document.getElementById('cvFileInput');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
@@ -28,69 +33,168 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function setupDropZones() {
-    // Job description drop zone
-    jobDropZone.addEventListener('click', () => jobDescriptionInput.focus());
-    
-    jobDropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        jobDropZone.classList.add('dragover');
-    });
-
-    jobDropZone.addEventListener('dragleave', () => {
-        jobDropZone.classList.remove('dragover');
-    });
-
-    jobDropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        jobDropZone.classList.remove('dragover');
-
-        const file = e.dataTransfer.files[0];
-        if (file && file.type.includes('text')) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                jobDescriptionInput.value = e.target.result;
-                parseJobDescription();
-            };
-            reader.readAsText(file);
+    setupTextFileZone({
+        zone: jobDropZone,
+        input: jobFileInput,
+        allowedExtensions: ['txt', 'md', 'tex'],
+        invalidMessage: 'Upload a plain text, Markdown, or TeX file for the job description.',
+        onText: (text, file) => {
+            jobDescriptionInput.value = text;
+            notify('success', 'Job file loaded', file.name);
+            parseJobDescription();
         }
     });
-    
-    // CV drop zone
-    cvDropZone.addEventListener('click', () => cvLatexInput.focus());
-    
-    cvDropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        cvDropZone.classList.add('dragover');
-    });
 
-    cvDropZone.addEventListener('dragleave', () => {
-        cvDropZone.classList.remove('dragover');
-    });
+    setupCvUploadZone();
+}
 
-    cvDropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        cvDropZone.classList.remove('dragover');
+// The CV zone accepts LaTeX/text (read locally) *and* PDF/DOCX (sent to the
+// server for text extraction + conversion to a compilable LaTeX document).
+function setupCvUploadZone() {
+    const zone = cvDropZone;
+    const input = cvFileInput;
+    if (!zone || !input) {
+        return;
+    }
 
-        const file = e.dataTransfer.files[0];
-        if (file && (file.type.includes('text') || file.name.endsWith('.tex'))) {
+    const handle = (file) => {
+        if (!file) {
+            return;
+        }
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        if (ext === 'tex' || ext === 'txt' || file.type.includes('text')) {
             const reader = new FileReader();
-            reader.onload = (e) => {
-                cvLatexInput.value = e.target.result;
+            reader.onload = (event) => {
+                cvLatexInput.value = event.target.result || '';
+                notify('success', 'CV file loaded', file.name);
             };
+            reader.onerror = () => notify('danger', 'Could not read file', 'Try pasting the LaTeX directly.');
             reader.readAsText(file);
+        } else if (ext === 'pdf' || ext === 'docx') {
+            extractCvFile(file);
+        } else {
+            notify('warning', 'Unsupported file', 'Upload a .tex, .pdf, or .docx CV.');
+        }
+        input.value = '';
+    };
+
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            input.click();
         }
     });
+    zone.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        zone.classList.add('dragover');
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', (event) => {
+        event.preventDefault();
+        zone.classList.remove('dragover');
+        handle(event.dataTransfer.files[0]);
+    });
+    input.addEventListener('change', () => handle(input.files[0]));
+}
+
+// Upload a PDF/DOCX CV; the server extracts text and returns a LaTeX document.
+async function extractCvFile(file) {
+    const statusEl = document.getElementById('cvExtractStatus');
+    const templateEl = document.getElementById('cvTemplate');
+    const languageEl = document.getElementById('cvLanguage');
+
+    const form = new FormData();
+    form.append('file', file);
+    if (templateEl && templateEl.value) form.append('template', templateEl.value);
+    if (languageEl && languageEl.value) form.append('language', languageEl.value);
+
+    showLoading(true, 'Reading your CV', 'Extracting text from the file and building LaTeX');
+    if (statusEl) statusEl.innerHTML = '';
+    try {
+        // Note: no Content-Type header — the browser sets the multipart boundary.
+        const response = await fetch('/api/extract-cv', { method: 'POST', body: form });
+        const data = await response.json();
+        if (response.ok) {
+            cvLatexInput.value = data.latex || '';
+            if (statusEl) {
+                statusEl.innerHTML =
+                    `<div class="recommendation"><i class="bi bi-check2-circle"></i> ` +
+                    `Imported <strong>${escapeHtml(file.name)}</strong> as LaTeX. ` +
+                    `Review it below — then upload it for this offer.</div>`;
+            }
+            notify('success', 'CV imported', 'Your file was converted to LaTeX.');
+        } else {
+            notify('danger', 'Import failed', data.error || 'Could not read that file.');
+        }
+    } catch (error) {
+        console.error('Error extracting CV file:', error);
+        notify('danger', 'Import failed', 'An error occurred while reading the file.');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function setupTextFileZone({ zone, input, allowedExtensions, invalidMessage, onText }) {
+    if (!zone || !input) {
+        return;
+    }
+
+    const openPicker = () => input.click();
+    const canRead = (file) => {
+        if (!file) {
+            return false;
+        }
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        return file.type.includes('text') || allowedExtensions.includes(ext);
+    };
+
+    const readFile = (file) => {
+        if (!canRead(file)) {
+            notify('warning', 'Unsupported file', invalidMessage);
+            input.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => onText(event.target.result || '', file);
+        reader.onerror = () => notify('danger', 'Could not read file', 'Try pasting the content directly into the text area.');
+        reader.readAsText(file);
+    };
+
+    zone.addEventListener('click', openPicker);
+    zone.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openPicker();
+        }
+    });
+
+    zone.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        zone.classList.add('dragover');
+    });
+
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+
+    zone.addEventListener('drop', (event) => {
+        event.preventDefault();
+        zone.classList.remove('dragover');
+        readFile(event.dataTransfer.files[0]);
+    });
+
+    input.addEventListener('change', () => readFile(input.files[0]));
 }
 
 async function parseJobDescription() {
     const text = jobDescriptionInput.value.trim();
     
     if (!text) {
-        alert('Please enter a job description');
+        notify('warning', 'Job description missing', 'Paste an offer or upload a text file first.');
         return;
     }
     
-    showLoading(true);
+    showLoading(true, 'Reading the offer', 'Extracting skills, requirements, and qualifications');
     
     try {
         const response = await fetch('/api/parse-job', {
@@ -139,13 +243,15 @@ async function parseJobDescription() {
             
             // Show CV upload section
             cvSection.classList.remove('hidden');
+            notify('success', 'Job analyzed', `${data.skills.length} skills and ${data.requirements.length} requirements found.`);
+            signalWorkflowChange();
             
         } else {
-            alert(`Error: ${data.error || 'Failed to parse job description'}`);
+            notify('danger', 'Job analysis failed', data.error || 'Failed to parse job description.');
         }
     } catch (error) {
         console.error('Error parsing job description:', error);
-        alert('An error occurred while parsing the job description. Please try again.');
+        notify('danger', 'Job analysis failed', 'An error occurred while parsing the job description. Please try again.');
     } finally {
         showLoading(false);
     }
@@ -155,19 +261,19 @@ async function uploadCV() {
     const cvLatex = cvLatexInput.value.trim();
     
     if (!cvLatex) {
-        alert('Please enter or upload your LaTeX CV');
+        notify('warning', 'CV missing', 'Paste your LaTeX CV or upload a .tex file first.');
         return;
     }
     
     // Validate LaTeX structure
     if (!cvLatex.includes('\\begin{document}') || !cvLatex.includes('\\end{document}')) {
-        alert('This doesn\'t appear to be a valid LaTeX document. Make sure it includes \\begin{document} and \\end{document}');
+        notify('warning', 'Invalid LaTeX document', 'Make sure the CV includes \\begin{document} and \\end{document}.');
         return;
     }
     
     // Check if job description was parsed
     if (jobAnalysisSection.classList.contains('hidden')) {
-        alert('Please parse a job description first');
+        notify('warning', 'Analyze the offer first', 'Parse the job description before uploading the CV.');
         return;
     }
     
@@ -175,7 +281,8 @@ async function uploadCV() {
     try { sessionStorage.setItem('autocv_cv_latex', cvLatex); } catch (e) {}
 
     actionButtons.classList.remove('hidden');
-    alert('CV uploaded successfully! Now click "Optimize CV" to analyze and improve it for this job.');
+    notify('success', 'CV ready', 'You can optimize it for this offer now.');
+    signalWorkflowChange();
 }
 
 async function loadSampleJob() {
@@ -189,7 +296,7 @@ async function loadSampleJob() {
         }
     } catch (error) {
         console.error('Error loading sample job:', error);
-        alert('Failed to load sample job. Please try again.');
+        notify('danger', 'Sample job unavailable', 'Failed to load the sample job. Please try again.');
     }
 }
 
@@ -220,7 +327,7 @@ async function loadSampleCV() {
         }
     } catch (error) {
         console.error('Error loading sample CV:', error);
-        alert('Failed to load sample CV. Please try again.');
+        notify('danger', 'Sample CV unavailable', 'Failed to load the sample CV. Please try again.');
     }
 }
 
@@ -229,7 +336,7 @@ async function optimizeCV() {
     const jobText = jobDescriptionInput.value.trim();
     
     if (!cvLatex || !jobText) {
-        alert('Please provide both CV and job description');
+        notify('warning', 'Context missing', 'Provide both a CV and a job description before optimizing.');
         return;
     }
 
@@ -241,7 +348,7 @@ async function optimizeCV() {
 
     // First, parse job description if not already done
     if (jobAnalysisSection.classList.contains('hidden')) {
-        showLoading(true);
+        showLoading(true, 'Reading the offer', 'Preparing the job context before optimization');
         try {
             const response = await fetch('/api/parse-job', {
                 method: 'POST',
@@ -259,6 +366,7 @@ async function optimizeCV() {
             
         } catch (error) {
             console.error('Error parsing job:', error);
+            notify('danger', 'Job analysis failed', error.message || 'Could not parse the job description.');
             showLoading(false);
             return;
         } finally {
@@ -267,15 +375,19 @@ async function optimizeCV() {
     }
     
     // Analyze and optimize CV
-    showLoading(true);
-    
+    showLoading(true, 'Optimizing your CV', 'Matching skills, rewriting sections, and preparing the PDF');
+
+    const languageEl = document.getElementById('cvLanguage');
+    const language = (languageEl && languageEl.value) || 'en';
+
     try {
         const response = await fetch('/api/optimize-cv', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 cv_latex: cvLatex,
-                job_description: window.currentJobAnalysis || { skills: [], requirements: [] }
+                job_description: window.currentJobAnalysis || { skills: [], requirements: [] },
+                language: language
             })
         });
         
@@ -299,20 +411,35 @@ async function optimizeCV() {
 
             // LLM-proposed new sections the candidate can insert
             updateProposedAdditions(data.proposed_additions);
-            
+
+            // Keep the full optimization + context around for the ATS panel,
+            // before/after review, cover letter, and "save to workspace".
+            window.currentOptimization = data;
+            window.currentCvLatex = cvLatex;
+            window.currentLanguage = language;
+
+            // Let the feature modules (ATS / review / cover letter) render.
+            if (window.AutoCVFeatures && typeof window.AutoCVFeatures.onOptimized === 'function') {
+                window.AutoCVFeatures.onOptimized(data);
+            }
+            if (window.AutoCVReview && typeof window.AutoCVReview.render === 'function') {
+                window.AutoCVReview.render(data.section_diffs, data.optimized_latex);
+            }
+
             // Show results
             resultsSection.classList.remove('hidden');
+            signalWorkflowChange();
             resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
             // Build the visual PDF preview from the optimized LaTeX.
             await renderPDFPreview();
             
         } else {
-            alert(`Error: ${data.error || 'Failed to optimize CV'}`);
+            notify('danger', 'Optimization failed', data.error || 'Failed to optimize CV.');
         }
     } catch (error) {
         console.error('Error optimizing CV:', error);
-        alert('An error occurred while optimizing your CV. Please try again.');
+        notify('danger', 'Optimization failed', 'An error occurred while optimizing your CV. Please try again.');
     } finally {
         showLoading(false);
     }
@@ -460,6 +587,7 @@ function insertProposal(index) {
         btn.classList.add('btn-success');
         btn.innerHTML = '<i class="bi bi-check2"></i> Inserted';
     }
+    notify('success', 'Section inserted', 'Render the PDF again to preview the updated CV.');
 }
 
 function updateRecommendations(recommendations) {
@@ -474,7 +602,7 @@ function updateRecommendations(recommendations) {
     recommendations.forEach((rec, index) => {
         const recEl = document.createElement('div');
         recEl.className = 'recommendation';
-        recEl.innerHTML = `<i class="bi bi-lightbulb"></i> ${rec}`;
+        recEl.innerHTML = `<i class="bi bi-lightbulb"></i> ${escapeHtml(rec)}`;
         container.appendChild(recEl);
     });
 }
@@ -494,17 +622,18 @@ async function downloadPDF() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    notify('success', 'PDF downloaded', 'Your optimized CV PDF was generated.');
 }
 
 async function renderLatexToPdfBlob() {
     const latex = getOptimizedLatex();
     
     if (!latex) {
-        alert('No LaTeX content to render. Please optimize your CV first.');
+        notify('warning', 'Nothing to render', 'Optimize your CV first, then render or download the PDF.');
         return null;
     }
     
-    showLoading(true);
+    showLoading(true, 'Rendering PDF', 'Compiling LaTeX and repairing small issues if needed');
     
     try {
         const response = await fetch('/api/render-latex', {
@@ -535,12 +664,12 @@ async function renderLatexToPdfBlob() {
             return await response.blob();
         } else {
             const errorData = await response.json();
-            alert(`Error: ${errorData.error || 'Failed to generate PDF'}\n\n${errorData.details || ''}`);
+            notify('danger', 'PDF render failed', errorData.details || errorData.error || 'Failed to generate PDF.');
             return null;
         }
     } catch (error) {
         console.error('Error downloading PDF:', error);
-        alert('An error occurred while generating the PDF. Please try again.');
+        notify('danger', 'PDF render failed', 'An error occurred while generating the PDF. Please try again.');
         return null;
     } finally {
         showLoading(false);
@@ -576,7 +705,7 @@ function copyToClipboard() {
     const latex = getOptimizedLatex();
     
     if (!latex) {
-        alert('No LaTeX content to copy. Please optimize your CV first.');
+        notify('warning', 'Nothing to copy', 'Optimize your CV first, then copy the LaTeX.');
         return;
     }
     
@@ -587,17 +716,62 @@ function copyToClipboard() {
         setTimeout(() => {
             btn.innerHTML = originalText;
         }, 2000);
+        notify('success', 'Copied', 'Optimized LaTeX copied to the clipboard.');
     }).catch(err => {
-        alert('Failed to copy LaTeX to clipboard');
+        notify('danger', 'Copy failed', 'Your browser blocked clipboard access.');
     });
 }
 
-function showLoading(show) {
+function showLoading(show, title, message) {
     if (show) {
+        if (loadingTitle && title) {
+            loadingTitle.textContent = title;
+        }
+        if (loadingMessage && message) {
+            loadingMessage.textContent = message;
+        }
         loadingIndicator.classList.add('show');
     } else {
         loadingIndicator.classList.remove('show');
     }
+}
+
+function signalWorkflowChange() {
+    document.dispatchEvent(new CustomEvent('autocv:state-change'));
+}
+
+function notify(type, title, message) {
+    if (!toastRegion) {
+        console[type === 'danger' ? 'error' : 'log'](`${title}: ${message || ''}`);
+        return;
+    }
+
+    const toast = document.createElement('div');
+    const icon = {
+        success: 'bi-check2-circle',
+        warning: 'bi-exclamation-triangle',
+        danger: 'bi-x-circle'
+    }[type] || 'bi-info-circle';
+
+    toast.className = `toast-card ${type || 'info'}`;
+    toast.innerHTML = `
+        <span class="toast-icon"><i class="bi ${icon}"></i></span>
+        <span class="toast-copy">
+            <strong>${escapeHtml(title || 'Notice')}</strong>
+            ${message ? `<span>${escapeHtml(message)}</span>` : ''}
+        </span>
+        <button type="button" class="toast-close" aria-label="Dismiss notification">
+            <i class="bi bi-x-lg"></i>
+        </button>`;
+
+    const removeToast = () => {
+        toast.classList.add('closing');
+        setTimeout(() => toast.remove(), 220);
+    };
+
+    toast.querySelector('.toast-close').addEventListener('click', removeToast);
+    toastRegion.appendChild(toast);
+    setTimeout(removeToast, type === 'danger' ? 7000 : 4200);
 }
 
 function getOptimizedLatex() {
@@ -619,7 +793,7 @@ function setOptimizedLatex(latex) {
 }
 
 function escapeHtml(value) {
-    return value
+    return String(value || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')

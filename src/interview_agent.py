@@ -15,12 +15,15 @@ rule-based fallback when the model is unreachable.
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional, Union
 
 try:  # importable both as a bare module (main.py) and as the src package
-    from llm_client import complete, Task
+    from llm_client import complete, get_max_workers, Task
+    from llm_json import request_json
 except ImportError:  # pragma: no cover
-    from .llm_client import complete, Task
+    from .llm_client import complete, get_max_workers, Task
+    from .llm_json import request_json
 
 
 VALID_DOMAINS = ("coding", "system_design", "technical", "behavioral")
@@ -384,9 +387,138 @@ def _clean_questions(
     return cleaned
 
 
-# How many times to ask the model before giving up to offline templates, and
-# how many valid questions we insist on before accepting an attempt.
-QUESTION_ATTEMPTS = max(1, int(os.environ.get("INTERVIEW_QUESTION_ATTEMPTS", "3")))
+# --------------------------------------------------------------------------
+# Two-stage generation: (1) one call proposes the questions, (2) parallel calls
+# each prepare one question's context (criteria + starter code/task). Every call
+# goes through llm_json.request_json, which validates and asks the model to
+# repair its own broken JSON instead of blindly retrying the same prompt.
+# --------------------------------------------------------------------------
+
+_PROPOSE_SYSTEM = (
+    "You are a senior technical interviewer. You propose interview questions "
+    "tightly grounded in the candidate's CV and the target job offer.\n"
+    "OUTPUT CONTRACT (critical):\n"
+    "- Respond with ONE valid JSON object and NOTHING else.\n"
+    "- No prose, no markdown fences, no <think> blocks, no comments.\n"
+    "- Double-quote all strings and escape inner quotes/newlines."
+)
+
+_PROPOSE_SCHEMA = (
+    '{"detected_level":"junior|mid|senior","role_title":"short title",'
+    '"questions":[{"domain":"coding|system_design|technical|behavioral",'
+    '"level":"junior|mid|senior","title":"<=8 words","question":"full text",'
+    '"rationale":"why, citing the CV or offer","language":"coding only, else empty"}]}'
+)
+
+_ENRICH_SYSTEM = (
+    "You prepare the supporting material for ONE interview question. Respond "
+    "with ONE valid JSON object and nothing else — no prose, no markdown "
+    "fences, no <think> blocks."
+)
+
+_ENRICH_SCHEMA = (
+    '{"evaluation_criteria":["what a strong answer shows"],'
+    '"language":"coding only, else empty",'
+    '"starter_code":"coding: signature/skeleton ONLY (never the solution); '
+    'system_design: optional scaffold; else empty",'
+    '"hints":["optional short hint"]}'
+)
+
+
+def _build_propose_prompt(cv_text, job_text, level, domains, count, extra_instructions=None):
+    level_line = (
+        f"Target seniority: {level.upper()}." if level
+        else "Infer the seniority (junior/mid/senior) from the CV and offer."
+    )
+    custom = ""
+    if extra_instructions and extra_instructions.strip():
+        custom = "\nEXTRA USER INSTRUCTIONS (follow closely):\n" + extra_instructions.strip() + "\n"
+    return f"""{level_line}
+
+Propose exactly {count} interview questions, spread as evenly as possible across these domains: {", ".join(domains)}. Return all {count}.
+
+Rules:
+- Each question MUST be justified by the CV and/or the offer (say why in "rationale").
+- For coding questions, set "language" to one present in the CV or offer; otherwise "".
+- Do NOT include starter code or evaluation criteria here — only the question itself.
+- Scale difficulty to the seniority.
+{custom}
+=== CANDIDATE CV ===
+{cv_text or "(no CV — base questions on the offer only)"}
+
+=== JOB OFFER ===
+{job_text or "(no offer — base questions on the CV only)"}
+
+Respond with ONLY this JSON shape:
+{_PROPOSE_SCHEMA}"""
+
+
+def _build_enrich_prompt(question, job_text):
+    return f"""Prepare the supporting context for this single interview question.
+
+DOMAIN: {question.get('domain')}
+LEVEL: {question.get('level')}
+QUESTION: {question.get('question')}
+LANGUAGE (if any): {question.get('language') or ''}
+
+JOB CONTEXT (for relevance):
+{(job_text or '')[:1200]}
+
+Produce:
+- 2-4 concrete "evaluation_criteria" (what a strong answer demonstrates).
+- CODING question: a "starter_code" skeleton (function signature / skeleton only, NEVER the solution) and confirm "language".
+- SYSTEM_DESIGN question: an optional short "starter_code" scaffold (e.g. the constraints to address), else "".
+- technical/behavioral: leave "starter_code" and "language" empty.
+
+Respond with ONLY this JSON shape:
+{_ENRICH_SCHEMA}"""
+
+
+def _propose_questions(cv_text, job_text, level, domains, count, extra_instructions, min_acceptable):
+    """Stage 1: one validated+repaired call returning the bare question list."""
+    def _validate(obj):
+        if not isinstance(obj, dict):
+            return False, "expected a JSON object"
+        qs = obj.get("questions")
+        if not isinstance(qs, list):
+            return False, "missing 'questions' array"
+        usable = [q for q in qs if isinstance(q, dict)
+                  and len(str(q.get("question") or "").strip()) >= 8]
+        if len(usable) < min_acceptable:
+            return False, f"need at least {min_acceptable} questions, got {len(usable)}"
+        return True, ""
+
+    obj, meta = request_json(
+        _build_propose_prompt(cv_text, job_text, level, domains, count, extra_instructions),
+        system_prompt=_PROPOSE_SYSTEM,
+        expect="object",
+        validate=_validate,
+        schema_hint=_PROPOSE_SCHEMA,
+        task=Task.INTERVIEW,
+        temperature=0.3,
+        max_tokens=2000,
+        repair_attempts=2,
+        log_prefix="interview:propose",
+    )
+    print(f"[interview-agent] propose: ok={meta['ok']} repaired={meta.get('repaired')} "
+          f"attempts={meta.get('attempts')} err={meta.get('error') or '-'}", flush=True)
+    return obj
+
+
+def _enrich_question(question, job_text):
+    """Stage 2 (per question, run in parallel): criteria + code/task scaffold."""
+    obj, _meta = request_json(
+        _build_enrich_prompt(question, job_text),
+        system_prompt=_ENRICH_SYSTEM,
+        expect="object",
+        schema_hint=_ENRICH_SCHEMA,
+        task=Task.INTERVIEW,
+        temperature=0.2,
+        max_tokens=900,
+        repair_attempts=1,
+        log_prefix="interview:enrich",
+    )
+    return obj if isinstance(obj, dict) else {}
 
 
 def generate_questions(
@@ -399,10 +531,14 @@ def generate_questions(
 ) -> Dict:
     """Generate interview questions grounded in the CV and the job offer.
 
-    Robust by design: the model is retried a few times (with rising
-    temperature and a stern JSON reminder) until it returns enough valid,
-    parseable questions. Only after every attempt fails do we fall back to
-    deterministic offline templates, which is flagged in the result.
+    Two robust stages:
+      1. **Propose** — one LLM call returns the question list. The output is
+         validated and, if malformed, the model is asked to repair it.
+      2. **Enrich** — for each proposed question, a parallel LLM call prepares
+         its evaluation criteria and (for coding/design) a starter code or task
+         scaffold, again validated + repaired.
+    Only if stage 1 cannot produce usable questions do we fall back to
+    deterministic offline templates (flagged in the result).
     """
     cv_text = latex_to_text(cv_latex or "")
     job_text = summarize_job(job_description or "")
@@ -413,69 +549,80 @@ def generate_questions(
     except (TypeError, ValueError):
         count = 6
 
-    base_prompt = _build_questions_prompt(
-        cv_text, job_text, level, domains, count, extra_instructions
-    )
-    # We accept an attempt once it yields at least this many usable questions.
     min_acceptable = max(1, min(count, (count + 1) // 2))
 
-    best: List[Dict] = []
-    best_parsed: Optional[dict] = None
-    last_error = "model unreachable or returned no usable JSON"
+    def _fallback(reason: str) -> Dict:
+        print(f"[interview-agent] proposal failed ({reason}); using offline templates", flush=True)
+        result = _fallback_questions(cv_text, job_text, level, domains, count)
+        result["error"] = reason
+        return result
 
-    for attempt in range(1, QUESTION_ATTEMPTS + 1):
-        prompt = base_prompt
-        if attempt > 1:
-            prompt = (
-                base_prompt
-                + "\n\nREMINDER: your previous reply could not be parsed or had too "
-                f"few questions. Return ONLY one valid JSON object with all {count} "
-                "questions, double-quoted strings, no markdown, no extra text."
-            )
-        # Nudge temperature up a little on retries to escape a bad rut.
-        temperature = min(0.3 + 0.2 * (attempt - 1), 0.7)
-        raw = _call_vllm(
-            prompt,
-            system_prompt=_QUESTIONS_SYSTEM,
-            max_tokens=2600,
-            temperature=temperature,
-        )
-        if not raw:
-            last_error = "model unreachable (connection failed)"
+    proposed = _propose_questions(
+        cv_text, job_text, level, domains, count, extra_instructions, min_acceptable
+    )
+    if not isinstance(proposed, dict):
+        return _fallback("model returned no usable question list")
+
+    detected = _normalize_level(proposed.get("detected_level"))
+    base: List[Dict] = []
+    for q in proposed.get("questions", []):
+        if not isinstance(q, dict):
             continue
-
-        parsed = _extract_json(raw)
-        if not isinstance(parsed, (dict, list)):
-            last_error = "model did not return valid JSON"
-            print(f"[interview-agent] attempt {attempt}: unparseable JSON", flush=True)
+        text = str(q.get("question") or "").strip()
+        if len(text) < 8:
             continue
-
-        cleaned = _clean_questions(parsed, level)
-        print(
-            f"[interview-agent] attempt {attempt}/{QUESTION_ATTEMPTS}: "
-            f"{len(cleaned)} valid question(s) (need >= {min_acceptable})",
-            flush=True,
-        )
-        if len(cleaned) > len(best):
-            best, best_parsed = cleaned, parsed if isinstance(parsed, dict) else {}
-        if len(cleaned) >= min_acceptable:
+        domain = q.get("domain") if q.get("domain") in VALID_DOMAINS else "technical"
+        base.append({
+            "domain": domain,
+            "level": _normalize_level(q.get("level")) or level or detected or "mid",
+            "title": str(q.get("title") or "").strip(),
+            "question": text,
+            "rationale": str(q.get("rationale") or "").strip(),
+            "language": str(q.get("language") or "").strip().lower(),
+        })
+        if len(base) >= count:
             break
-        last_error = f"only {len(cleaned)} usable question(s) returned"
 
-    if best:
-        parsed = best_parsed or {}
-        return {
-            "detected_level": _normalize_level(parsed.get("detected_level")) or level or "mid",
-            "role_title": str(parsed.get("role_title") or "Target role").strip(),
-            "questions": best[:count],
-            "fallback": False,
-            "attempts": attempt,
-        }
+    if not base:
+        return _fallback("no valid questions after parsing")
 
-    print(f"[interview-agent] all attempts failed ({last_error}); using offline templates", flush=True)
-    result = _fallback_questions(cv_text, job_text, level, domains, count)
-    result["error"] = last_error
-    return result
+    # Stage 2: prepare each question's context concurrently.
+    workers = max(1, min(get_max_workers(), len(base)))
+    print(f"[interview-agent] enriching {len(base)} question(s) in parallel "
+          f"(up to {workers} at once)…", flush=True)
+
+    def _worker(item):
+        idx, q = item
+        return idx, q, _enrich_question(q, job_text)
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(_worker, enumerate(base)))
+    results.sort(key=lambda r: r[0])
+
+    questions: List[Dict] = []
+    for i, (_idx, q, enr) in enumerate(results, start=1):
+        crit = enr.get("evaluation_criteria") or []
+        if isinstance(crit, str):
+            crit = [crit]
+        questions.append({
+            "id": i,
+            "domain": q["domain"],
+            "domain_label": DOMAIN_LABELS.get(q["domain"], "Technical"),
+            "level": q["level"],
+            "title": q["title"] or f"Question {i}",
+            "question": q["question"],
+            "rationale": q["rationale"],
+            "language": str(enr.get("language") or q["language"] or "").strip().lower(),
+            "starter_code": str(enr.get("starter_code") or ""),
+            "evaluation_criteria": [str(c).strip() for c in crit if str(c).strip()],
+        })
+
+    return {
+        "detected_level": detected or level or "mid",
+        "role_title": str(proposed.get("role_title") or "Target role").strip(),
+        "questions": questions[:count],
+        "fallback": False,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -597,8 +744,16 @@ def review_answer(
 
     job_text = summarize_job(job_description or "")
     prompt = _build_review_prompt(question, answer, language, job_text)
-    raw = _call_vllm(prompt, system_prompt=_REVIEW_SYSTEM, max_tokens=2200, temperature=0.25)
-    parsed = _extract_json(raw) if raw else None
+    parsed, _meta = request_json(
+        prompt,
+        system_prompt=_REVIEW_SYSTEM,
+        expect="object",
+        task=Task.INTERVIEW,
+        temperature=0.25,
+        max_tokens=2200,
+        repair_attempts=2,
+        log_prefix="interview:review",
+    )
 
     if not isinstance(parsed, dict):
         return _fallback_review(question, answer)

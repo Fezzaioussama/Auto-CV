@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create account | Auto-CV</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/style.css?v=4">
+    <link rel="stylesheet" href="/static/auth.css?v=3">
+</head>
+<body class="auth-body">
+    <main class="auth-shell">
+        <section class="auth-panel" aria-label="Auto-CV account creation">
+            <a class="brand auth-brand" href="{{ url_for('auth.login') }}">
+                <span class="logo logo-image"><img src="/static/assets/autocv-logo.png" alt="" aria-hidden="true"></span>
+                <span class="name">Auto<span>CV</span></span>
+            </a>
+            <h1 class="auth-title">Create your account</h1>
+            <p class="auth-sub">Save tailored CVs, track jobs, and pick up where you left off.</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="auth-alert {{ 'error' if category == 'error' else 'info' }}">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('auth.register') }}" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label class="auth-label" for="name">Name <span class="text-muted">(optional)</span></label>
+                <input class="form-control auth-input" id="name" name="name" type="text" autocomplete="name">
+
+                <label class="auth-label mt-3" for="email">Email</label>
+                <input class="form-control auth-input" id="email" name="email" type="email" autocomplete="email" required>
+
+                <label class="auth-label mt-3" for="password">Password</label>
+                <input class="form-control auth-input" id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+                <small class="text-muted">At least 8 characters.</small>
+
+                <button class="btn btn-primary w-100 mt-4 auth-submit" type="submit">
+                    <i class="bi bi-person-plus"></i> Create account
+                </button>
+            </form>
+
+            <p class="auth-foot">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+        </section>
+
+        <aside class="auth-side" aria-hidden="true">
+            <div class="auth-side-head">
+                <img class="auth-side-logo" src="/static/assets/autocv-logo.png" alt="">
+                <div>
+                    <span class="auth-kicker">Private workspace</span>
+                    <strong>CV versions saved</strong>
+                </div>
+            </div>
+            <img class="auth-art" src="/static/assets/autocv-interface-visual.png" alt="">
+            <div class="auth-preview auth-preview-register">
+                <div class="preview-top">
+                    <span>Application kit</span>
+                    <b>3 files</b>
+                </div>
+                <div class="preview-ring">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <div class="preview-list">
+                    <div class="preview-row active"><i class="bi bi-file-earmark-text"></i><span>Optimized CV</span></div>
+                    <div class="preview-row"><i class="bi bi-envelope-paper"></i><span>Cover letter</span></div>
+                    <div class="preview-row"><i class="bi bi-bookmark-check"></i><span>Saved job</span></div>
+                </div>
+            </div>
+            <div class="auth-flow">
+                <span class="flow-dot active"></span>
+                <span class="flow-line"></span>
+                <span class="flow-dot"></span>
+                <span class="flow-line"></span>
+                <span class="flow-dot"></span>
+            </div>
+        </aside>
+    </main>
+</body>
+</html>
