@@ -11,6 +11,30 @@ import os
 import sys
 import traceback
 
+
+def _configure_vercel_runtime_dirs() -> None:
+    """Point libraries that cache on import at Vercel's writable scratch space."""
+    if not (os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV")):
+        return
+
+    runtime_root = "/tmp/autocv-runtime"
+    paths = {
+        "HOME": os.path.join(runtime_root, "home"),
+        "XDG_CACHE_HOME": os.path.join(runtime_root, "cache"),
+        "MPLCONFIGDIR": os.path.join(runtime_root, "matplotlib"),
+        "NLTK_DATA": os.path.join(runtime_root, "nltk_data"),
+        "JOBLIB_TEMP_FOLDER": os.path.join(runtime_root, "joblib"),
+        "TMPDIR": os.path.join(runtime_root, "tmp"),
+        "TEMP": os.path.join(runtime_root, "tmp"),
+        "TMP": os.path.join(runtime_root, "tmp"),
+    }
+    for name, path in paths.items():
+        os.environ[name] = path
+        os.makedirs(path, exist_ok=True)
+
+
+_configure_vercel_runtime_dirs()
+
 from flask import Flask, Response
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
