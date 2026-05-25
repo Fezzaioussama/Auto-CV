@@ -606,7 +606,7 @@ def _propose_questions(cv_text, job_text, level, domains, count, extra_instructi
     )
     print(f"[interview-agent] propose: ok={meta['ok']} repaired={meta.get('repaired')} "
           f"attempts={meta.get('attempts')} err={meta.get('error') or '-'}", flush=True)
-    return obj
+    return obj, meta
 
 
 def _enrich_question(question, job_text):
@@ -660,14 +660,15 @@ def generate_questions(
     def _fallback(reason: str) -> Dict:
         print(f"[interview-agent] proposal failed ({reason}); using offline templates", flush=True)
         result = _fallback_questions(cv_text, job_text, level, domains, count, session_goal)
-        result["error"] = reason
+        result["fallback_reason"] = reason
         return result
 
-    proposed = _propose_questions(
+    proposed, propose_meta = _propose_questions(
         cv_text, job_text, level, domains, count, extra_instructions, session_goal, min_acceptable
     )
     if not isinstance(proposed, dict):
-        return _fallback("model returned no usable question list")
+        reason = str((propose_meta or {}).get("error") or "model returned no usable question list")
+        return _fallback(reason)
 
     detected = _normalize_level(proposed.get("detected_level"))
     base: List[Dict] = []

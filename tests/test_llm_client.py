@@ -42,3 +42,25 @@ def test_chat_returns_none_on_non_dict_choice(monkeypatch):
 def test_chat_extracts_content_on_valid_response(monkeypatch):
     _patch_post(monkeypatch, {"choices": [{"message": {"content": "hello world"}}]})
     assert llm.chat([{"role": "user", "content": "hi"}], api_key="x") == "hello world"
+
+
+def test_openrouter_key_selects_openrouter_when_source_is_unset(monkeypatch):
+    monkeypatch.delenv("SOURCE_LLM", raising=False)
+    monkeypatch.delenv("LLM_SOURCE", raising=False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+
+    assert llm.active_source() == "openrouter"
+
+
+def test_openrouter_default_model_is_gpt_oss_120b(monkeypatch):
+    monkeypatch.setenv("SOURCE_LLM", "openrouter")
+    monkeypatch.delenv("OPENROUTER_MODEL", raising=False)
+
+    assert llm.resolve_model(llm.Task.DEFAULT) == "openai/gpt-oss-120b"
+
+
+def test_explicit_source_still_wins_over_openrouter_key(monkeypatch):
+    monkeypatch.setenv("SOURCE_LLM", "local")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+
+    assert llm.active_source() == "local"

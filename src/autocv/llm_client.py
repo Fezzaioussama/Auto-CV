@@ -95,12 +95,15 @@ class Task:
 _LEGACY_LOCAL_URL = "http://195.154.75.46:8002/v1"
 _LEGACY_LOCAL_MODEL = "Qwen/Qwen3-Coder-Next-FP8"
 _DEFAULT_OPENROUTER_URL = "https://openrouter.ai/api/v1"
-_DEFAULT_OPENROUTER_MODEL = "openai/gpt-4o-mini"
+_DEFAULT_OPENROUTER_MODEL = "openai/gpt-oss-120b"
 
 
 def active_source() -> str:
     """Return the active provider: ``'local'`` or ``'openrouter'``."""
-    source = (_env("SOURCE_LLM", "LLM_SOURCE", default="local") or "local").lower()
+    explicit_source = _env("SOURCE_LLM", "LLM_SOURCE")
+    if not explicit_source and _env("OPENROUTER_API_KEY"):
+        return "openrouter"
+    source = (explicit_source or "local").lower()
     return "openrouter" if source in ("openrouter", "serverless", "remote") else "local"
 
 
