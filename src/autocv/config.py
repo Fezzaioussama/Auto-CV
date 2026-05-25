@@ -91,6 +91,16 @@ def _database_uri() -> str:
     return raw
 
 
+def _database_engine_options() -> dict:
+    uri = _database_uri()
+    options = {"pool_pre_ping": True}
+    if "pooler.supabase.com" in uri or ":6543" in uri:
+        from sqlalchemy.pool import NullPool
+
+        options["poolclass"] = NullPool
+    return options
+
+
 def _is_production() -> bool:
     env = (os.environ.get("FLASK_ENV") or os.environ.get("APP_ENV") or "production").lower()
     # Default to production-safe behaviour; only "development"/"dev" relaxes it.
@@ -154,7 +164,7 @@ class Config:
     # --- Database ----------------------------------------------------------
     SQLALCHEMY_DATABASE_URI = _database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    SQLALCHEMY_ENGINE_OPTIONS = _database_engine_options()
 
     # --- Rate limiting -----------------------------------------------------
     RATELIMIT_STORAGE_URI = _str("RATELIMIT_STORAGE_URI", "memory://")
