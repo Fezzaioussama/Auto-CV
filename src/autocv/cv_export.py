@@ -10,8 +10,11 @@ bullets, paragraphs) and the text, and drops formatting commands.
 from __future__ import annotations
 
 import io
+import os
 import re
 from typing import List, Dict, Tuple
+
+_FONT_DIR = os.path.join(os.path.dirname(__file__), "assets", "fonts")
 
 
 class ExportError(Exception):
@@ -172,23 +175,103 @@ def blocks_to_docx(blocks: List[Dict[str, str]]) -> bytes:
     return buf.getvalue()
 
 
+def blocks_to_pdf(blocks: List[Dict[str, str]]) -> bytes:
+    """Render parsed CV blocks to a clean, readable PDF (pure Python).
+
+    Uses fpdf2 with a bundled DejaVu Unicode font so accented text (e.g. French
+    CVs) and common typography render correctly. This is the rendering path on
+    hosts without a LaTeX toolchain (Vercel): it doesn't reproduce the LaTeX
+    template, but it produces a tidy A4 document with the same content and
+    structure (title, section headings, sub-headings, bullets, paragraphs).
+    """
+    try:
+        from fpdf import FPDF
+    except ImportError as exc:  # pragma: no cover - dependency declared
+        raise ExportError("PDF export is not available (pip install fpdf2).") from exc
+
+    regular = os.path.join(_FONT_DIR, "DejaVuSans.ttf")
+    bold = os.path.join(_FONT_DIR, "DejaVuSans-Bold.ttf")
+
+    pdf = FPDF(format="A4", unit="mm")
+    pdf.set_margins(18, 16, 18)
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_font("DejaVu", "", regular)
+    pdf.add_font("DejaVu", "B", bold)
+    pdf.add_page()
+    width = pdf.epw  # effective (printable) page width
+
+    seen_heading = False
+    seen_title = False
+    for block in blocks:
+        kind, text = block["kind"], block["text"]
+        if not text:
+            continue
+
+        if kind == "heading":
+            seen_heading = True
+            pdf.ln(2.5)
+            pdf.set_font("DejaVu", "B", 12.5)
+            pdf.set_text_color(20, 20, 20)
+            pdf.multi_cell(width, 6.5, text.upper())
+            rule_y = pdf.get_y() + 0.5
+            pdf.set_draw_color(170, 170, 170)
+            pdf.line(pdf.l_margin, rule_y, pdf.l_margin + width, rule_y)
+            pdf.ln(2)
+        elif kind == "subheading":
+            pdf.ln(1)
+            pdf.set_font("DejaVu", "B", 10.5)
+            pdf.set_text_color(40, 40, 40)
+            pdf.multi_cell(width, 5.5, text)
+        elif kind == "bullet":
+            pdf.set_font("DejaVu", "", 10)
+            pdf.set_text_color(0, 0, 0)
+            saved_margin = pdf.l_margin
+            pdf.set_left_margin(saved_margin + 5)
+            pdf.set_x(saved_margin + 5)
+            pdf.multi_cell(width - 5, 5, f"•  {text}")
+            pdf.set_left_margin(saved_margin)
+        else:  # plain text
+            # Before the first section heading, treat the first line as the
+            # name/title and any following lines as a centred contact line.
+            if not seen_heading and not seen_title:
+                seen_title = True
+                pdf.set_font("DejaVu", "B", 18)
+                pdf.set_text_color(15, 15, 15)
+                pdf.multi_cell(width, 9, text, align="C")
+                pdf.ln(0.5)
+            elif not seen_heading:
+                pdf.set_font("DejaVu", "", 9.5)
+                pdf.set_text_color(90, 90, 90)
+                pdf.multi_cell(width, 5, text, align="C")
+            else:
+                pdf.set_font("DejaVu", "", 10)
+                pdf.set_text_color(0, 0, 0)
+                pdf.multi_cell(width, 5, text)
+
+    return bytes(pdf.output())
+
+
 _FORMATS = {
     "docx": (
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "docx",
     ),
     "txt": ("text/plain; charset=utf-8", "txt"),
+    "pdf": ("application/pdf", "pdf"),
 }
 
 
 def export_cv(latex: str, fmt: str) -> Tuple[bytes, str, str]:
     """Return ``(bytes, mimetype, extension)`` for the requested format.
 
-    ``fmt`` is ``docx`` or ``txt``. Raises :class:`ExportError` on bad input.
+    ``fmt`` is ``docx``, ``pdf`` or ``txt``. Raises :class:`ExportError` on bad
+    input.
     """
     fmt = (fmt or "").lower().strip()
     if fmt not in _FORMATS:
-        raise ExportError(f"Unsupported export format: {fmt!r}. Use 'docx' or 'txt'.")
+        raise ExportError(
+            f"Unsupported export format: {fmt!r}. Use 'docx', 'pdf' or 'txt'."
+        )
     if not (latex or "").strip():
         raise ExportError("No CV content to export.")
 
@@ -199,5 +282,10 @@ def export_cv(latex: str, fmt: str) -> Tuple[bytes, str, str]:
                   for line in (latex or "").splitlines() if line.strip()]
 
     mimetype, ext = _FORMATS[fmt]
-    data = blocks_to_docx(blocks) if fmt == "docx" else blocks_to_text(blocks).encode("utf-8")
+    if fmt == "docx":
+        data = blocks_to_docx(blocks)
+    elif fmt == "pdf":
+        data = blocks_to_pdf(blocks)
+    else:
+        data = blocks_to_text(blocks).encode("utf-8")
     return data, mimetype, ext
