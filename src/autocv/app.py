@@ -293,12 +293,19 @@ def _register_routes(app: Flask) -> None:
 
     @app.route("/")
     def index():
-        """Render the optimizer/landing page.
+        """Use authentication as the first screen.
 
-        Public so visitors can see the product and value proposition before
-        signing up (widening the funnel). Heavy actions still require auth and
-        prompt login; anonymous visitors can also try the capped ``/demo``.
+        Anonymous visitors start at the login page. Authenticated users land in
+        the optimizer workspace.
         """
+        if not current_user.is_authenticated:
+            return redirect(url_for("auth.login"))
+        return redirect(url_for("optimizer"))
+
+    @app.route("/optimizer")
+    @login_required
+    def optimizer():
+        """Render the main CV optimizer application."""
         return render_template("index.html")
 
     @app.route("/interview")

@@ -101,7 +101,7 @@ def _auth_response(ok: bool, *, message: str, redirect_to: str, status: int = 20
 @limiter.limit(lambda: _auth_limit())
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for("index"))
+        return redirect(url_for("optimizer"))
 
     if request.method == "GET":
         return render_template("register.html")
@@ -142,7 +142,7 @@ def register():
         return redirect(url_for("auth.login"))
 
     login_user(user, remember=True)
-    target = url_for("index")
+    target = url_for("optimizer")
     resp = _auth_response(True, message="", redirect_to=target)
     return resp
 
@@ -151,7 +151,7 @@ def register():
 @limiter.limit(lambda: _auth_limit())
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for("index"))
+        return redirect(url_for("optimizer"))
 
     next_target = request.args.get("next")
     if next_target:
@@ -180,10 +180,10 @@ def login():
         return resp if resp is not None else render_template("login.html")
 
     login_user(user, remember=True)
-    target = session.pop("post_login_next", None) or url_for("index")
+    target = session.pop("post_login_next", None) or url_for("optimizer")
     # Only allow same-origin relative redirects from the stored return target.
     if not target.startswith("/"):
-        target = url_for("index")
+        target = url_for("optimizer")
     resp = _auth_response(True, message="", redirect_to=target)
     return resp
 
@@ -258,7 +258,7 @@ def verify_email(token):
         user.verified_at = datetime.utcnow()
         db.session.commit()
     flash("Email confirmed — you're all set.", "info")
-    return redirect(url_for("index") if current_user.is_authenticated else url_for("auth.login"))
+    return redirect(url_for("optimizer") if current_user.is_authenticated else url_for("auth.login"))
 
 
 @auth_bp.route("/resend-verification", methods=["POST"])
@@ -271,14 +271,14 @@ def resend_verification():
     if _wants_json():
         return jsonify({"success": True, "message": "Confirmation email sent."})
     flash("Confirmation email sent.", "info")
-    return redirect(url_for("index"))
+    return redirect(url_for("optimizer"))
 
 
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
 @limiter.limit(lambda: _auth_limit())
 def forgot_password():
     if current_user.is_authenticated:
-        return redirect(url_for("index"))
+        return redirect(url_for("optimizer"))
     if request.method == "GET":
         return render_template("forgot_password.html")
 
