@@ -7,7 +7,6 @@ same LaTeX commands, optionally adding a couple of bullets that connect
 existing experience to the offer.
 """
 
-import json
 import re
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -15,8 +14,10 @@ from typing import Dict, List, Optional, Tuple, Union
 
 try:  # importable both as a bare module (main.py) and as the src package
     from llm_client import complete, get_max_workers, Task
+    from llm_json import request_json
 except ImportError:  # pragma: no cover
     from .llm_client import complete, get_max_workers, Task
+    from .llm_json import request_json
 
 
 SECTION_REGEX = re.compile(r"\\section\*?\{([^{}]+)\}")
@@ -443,23 +444,6 @@ def _looks_like_valid_proposal(latex_snippet: str) -> bool:
     return "\\section" in latex_snippet
 
 
-def _parse_proposals(raw: str) -> List[Dict]:
-    """Extract the JSON array of proposals from the model response."""
-    text = _THINK_RE.sub("", raw).strip()
-    fence = _FENCE_RE.search(text)
-    if fence:
-        text = fence.group(1)
-    start = text.find("[")
-    end = text.rfind("]") + 1
-    if start == -1 or end <= start:
-        return []
-    try:
-        data = json.loads(text[start:end])
-    except (ValueError, TypeError):
-        return []
-    return data if isinstance(data, list) else []
-
-
 def _build_proposal_prompt(
     existing_titles: List[str],
     matched: str,
@@ -530,19 +514,23 @@ def propose_additions(
         existing_titles, matched, missing, requirements, job_title, company,
         job_text, max_items,
     )
-    raw = _call_vllm(
+    # Expect a JSON array; on malformed/incomplete JSON the hardened path asks
+    # the model to repair it instead of dropping all proposals.
+    data, _meta = request_json(
         prompt,
         system_prompt=PROPOSAL_SYSTEM_PROMPT + _language_clause(language),
-        max_tokens=1800,
-        temperature=0.3,
+        expect="array",
         task=Task.PROPOSAL,
+        temperature=0.3,
+        max_tokens=1800,
+        log_prefix="proposals",
     )
-    if not raw:
+    if not isinstance(data, list):
         return []
 
     proposals: List[Dict] = []
     seen_titles = {t.strip().lower() for t in existing_titles}
-    for item in _parse_proposals(raw):
+    for item in data:
         if not isinstance(item, dict):
             continue
         title = str(item.get("title") or "").strip()

@@ -243,10 +243,20 @@ def chat(
         print(f"[{log_prefix}] {source} returned non-JSON body", flush=True)
         return None
 
-    content = (
-        data.get("choices", [{}])[0].get("message", {}).get("content", "") or None
-    )
-    return content
+    # Some providers return HTTP 200 with no usable choice — a rate-limit,
+    # moderation, length, or an inline {"error": ...} object. Treat that as a
+    # failure (return None) so callers fall back, instead of letting an
+    # IndexError escape on an empty ``choices`` list.
+    choices = data.get("choices") or []
+    if not choices:
+        err = data.get("error")
+        detail = f": {str(err)[:200]}" if err else ""
+        print(f"[{log_prefix}] {source} returned no usable choice "
+              f"({chosen_model}){detail}", flush=True)
+        return None
+    first = choices[0] if isinstance(choices[0], dict) else {}
+    message = first.get("message") if isinstance(first.get("message"), dict) else {}
+    return (message.get("content") or None)
 
 
 def complete(
