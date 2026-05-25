@@ -71,6 +71,26 @@ def _str(name: str, default: str) -> str:
     return value.strip() if value and value.strip() else default
 
 
+def _database_uri() -> str:
+    default = f"sqlite:///{os.path.join(_INSTANCE_DIR, 'auto_cv.db')}"
+    raw = os.environ.get("DATABASE_URL", "").strip()
+    if not raw:
+        return default
+    if "..." in raw or "<" in raw or ">" in raw:
+        print(
+            "[config] WARNING: DATABASE_URL still contains a placeholder; "
+            "falling back to local SQLite storage.",
+            file=sys.stderr,
+            flush=True,
+        )
+        return default
+    if raw.startswith("postgres://"):
+        return raw.replace("postgres://", "postgresql+psycopg://", 1)
+    if raw.startswith("postgresql://"):
+        return raw.replace("postgresql://", "postgresql+psycopg://", 1)
+    return raw
+
+
 def _is_production() -> bool:
     env = (os.environ.get("FLASK_ENV") or os.environ.get("APP_ENV") or "production").lower()
     # Default to production-safe behaviour; only "development"/"dev" relaxes it.
@@ -132,10 +152,7 @@ class Config:
     PUBLIC_BASE_URL = _str("PUBLIC_BASE_URL", "")
 
     # --- Database ----------------------------------------------------------
-    SQLALCHEMY_DATABASE_URI = _str(
-        "DATABASE_URL",
-        f"sqlite:///{os.path.join(_INSTANCE_DIR, 'auto_cv.db')}",
-    )
+    SQLALCHEMY_DATABASE_URI = _database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
 
