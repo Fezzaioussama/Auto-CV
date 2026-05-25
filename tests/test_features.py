@@ -39,8 +39,20 @@ def test_parse_job_requires_login(client):
 
 
 def test_public_pages_are_reachable_anonymously(client):
-    for path in ["/", "/how-it-works", "/demo", "/privacy", "/terms", "/login", "/register"]:
+    for path in ["/how-it-works", "/demo", "/privacy", "/terms", "/login", "/register"]:
         assert client.get(path).status_code == 200
+
+
+def test_root_is_authentication_first(client):
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code == 302
+    assert r.headers["Location"].endswith("/login")
+
+
+def test_optimizer_requires_login(client):
+    r = client.get("/optimizer", follow_redirects=False)
+    assert r.status_code == 302
+    assert "/login" in r.headers["Location"]
 
 
 def test_demo_runs_without_login(client):
