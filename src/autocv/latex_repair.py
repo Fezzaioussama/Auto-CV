@@ -17,6 +17,7 @@ the editor to the version that actually compiles.
 
 from __future__ import annotations
 
+import base64
 import os
 import re
 import shutil
@@ -35,6 +36,16 @@ except ImportError:  # pragma: no cover
 DEFAULT_REPAIR_ATTEMPTS = max(0, int(os.environ.get("LATEX_REPAIR_ATTEMPTS", "2")))
 # pdflatex wall-clock budget per compile (seconds). nonstopmode prevents hangs.
 COMPILE_TIMEOUT = float(os.environ.get("LATEX_COMPILE_TIMEOUT", "120"))
+
+
+def _compile_service_url() -> str:
+    """URL of the external LaTeX compile service, or '' to use local pdflatex.
+
+    Read at call time (not import) so tests and per-environment config take
+    effect without reimporting the module. Set on hosts that can't run a LaTeX
+    toolchain themselves (e.g. Vercel serverless) — see ``latex-service/``.
+    """
+    return os.environ.get("LATEX_COMPILE_URL", "").strip()
 
 
 # ---------------------------------------------------------------------------
@@ -148,17 +159,77 @@ def _sandboxed_env() -> dict:
     return env
 
 
+def _remote_compile_latex(latex_content: str, *, timeout: float) -> CompileResult:
+    """Compile via the external LaTeX service (``LATEX_COMPILE_URL``).
+
+    The service runs ``pdflatex`` in a TeX Live container and replies with JSON:
+    ``{"success": bool, "pdf_base64": str|None, "log": str, "returncode": int,
+    "timed_out": bool}``. Returning a :class:`CompileResult` (with the log) lets
+    the same LLM repair loop drive a remote compiler exactly like a local one.
+
+    Never raises ``FileNotFoundError``: when a service is configured, a missing
+    local ``pdflatex`` is irrelevant. Service/network problems come back as a
+    failed ``CompileResult`` so the caller degrades gracefully.
+    """
+    import requests  # declared dependency; imported lazily to keep import light
+
+    url = _compile_service_url()
+    token = os.environ.get("LATEX_COMPILE_TOKEN", "").strip()
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    try:
+        resp = requests.post(
+            url,
+            json={"latex": latex_content},
+            headers=headers,
+            # Give the service its own compile budget plus network slack.
+            timeout=timeout + 15,
+        )
+    except requests.RequestException as exc:
+        return CompileResult(False, None, f"LaTeX compile service unreachable: {exc}", -1)
+
+    if resp.status_code != 200:
+        return CompileResult(
+            False, None,
+            f"LaTeX compile service returned HTTP {resp.status_code}: {resp.text[:500]}",
+            -1,
+        )
+    try:
+        data = resp.json()
+    except ValueError:
+        return CompileResult(False, None, "LaTeX compile service returned non-JSON", -1)
+
+    log = data.get("log") or ""
+    returncode = int(data.get("returncode", -1) or -1)
+    if data.get("success") and data.get("pdf_base64"):
+        try:
+            pdf_bytes = base64.b64decode(data["pdf_base64"])
+        except (ValueError, TypeError):
+            return CompileResult(False, None, "LaTeX compile service returned invalid PDF data", -1)
+        return CompileResult(True, pdf_bytes, log, returncode)
+    return CompileResult(False, None, log, returncode, timed_out=bool(data.get("timed_out")))
+
+
 def compile_latex(latex_content: str, workdir: str, *, timeout: float = COMPILE_TIMEOUT) -> CompileResult:
-    """Run pdflatex in ``workdir`` and return the result.
+    """Compile ``latex_content`` to PDF and return the result.
+
+    Uses the external compile service when ``LATEX_COMPILE_URL`` is set (the
+    serverless/Vercel path), otherwise runs local ``pdflatex`` in ``workdir``.
 
     ``success`` means a PDF was produced (pdflatex with ``nonstopmode`` can
     recover from minor issues and still emit a PDF; we accept that, matching the
-    app's previous tolerant behaviour). Raises ``FileNotFoundError`` if pdflatex
-    is not installed — repair cannot help with that.
+    app's previous tolerant behaviour). Raises ``FileNotFoundError`` if local
+    pdflatex is not installed and no compile service is configured — repair
+    cannot help with that.
 
-    The compile is sandboxed (``-no-shell-escape`` + paranoid file-access env +
-    ``cwd`` pinned to the throwaway workdir) because the LaTeX is untrusted.
+    The local compile is sandboxed (``-no-shell-escape`` + paranoid file-access
+    env + ``cwd`` pinned to the throwaway workdir) because the LaTeX is
+    untrusted; the service applies the same sandboxing on its side.
     """
+    if _compile_service_url():
+        return _remote_compile_latex(latex_content, timeout=timeout)
+
     os.makedirs(workdir, exist_ok=True)
     tex_file = os.path.join(workdir, "cv.tex")
     pdf_file = os.path.join(workdir, "cv.pdf")
