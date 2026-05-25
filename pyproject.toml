@@ -53,6 +53,7 @@ dev = ["pytest>=8.3"]
 
 [project.scripts]
 auto-cv = "autocv.__main__:main"
+app = "app:app"
 
 [project.urls]
 Documentation = "docs/README.md"
