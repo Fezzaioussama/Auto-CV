@@ -264,11 +264,13 @@ Generates interview questions from a CV and/or job description.
     }
   ],
   "fallback": false,
+  "fallback_reason": "optional reason when fallback is true",
   "attempts": 1
 }
 ```
 
-If the LLM cannot produce usable JSON, `fallback` can be `true`.
+If the LLM cannot produce usable JSON, `fallback` can be `true` and `fallback_reason`
+explains why offline templates were used.
 
 ## `POST /api/interview/review`
 

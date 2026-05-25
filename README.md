@@ -107,7 +107,7 @@ For OpenRouter:
 ```env
 SOURCE_LLM=openrouter
 OPENROUTER_API_KEY=your-api-key
-OPENROUTER_MODEL=openai/gpt-4o-mini
+OPENROUTER_MODEL=openai/gpt-oss-120b
 ```
 
 4. Run the app:

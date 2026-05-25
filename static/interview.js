@@ -83,7 +83,7 @@ function ensureCodeMirror() {
 }
 
 // ---- Init ----
-console.log('[interview.js v5] script loaded');
+console.log('[interview.js v6] script loaded');
 
 function wireButtons() {
     const gen = document.getElementById('generateBtn');
@@ -251,9 +251,13 @@ async function generateQuestions() {
             }),
         });
         const data = await res.json();
-        if (!res.ok || data.error) throw new Error(data.error || 'Request failed');
+        if (!res.ok || data.success === false) throw new Error(data.error || 'Request failed');
         renderSession(data);
-        notify('success', 'Coaching session ready', `${data.questions.length} questions generated.`);
+        if (data.fallback) {
+            notify('warning', 'Offline templates loaded', data.fallback_reason || 'The AI model was unavailable.');
+        } else {
+            notify('success', 'Coaching session ready', `${data.questions.length} questions generated.`);
+        }
     } catch (err) {
         notify('danger', 'Question generation failed', err.message);
     } finally {
@@ -302,7 +306,7 @@ function renderSession(data) {
         const warn = document.createElement('div');
         warn.className = 'fallback-flag';
         warn.innerHTML = `<i class="bi bi-exclamation-triangle"></i> These are generic offline templates — the AI model couldn't be reached`
-            + (data.error ? ` (${escapeHtml(data.error)})` : '')
+            + (data.fallback_reason ? ` (${escapeHtml(data.fallback_reason)})` : '')
             + `. Check the server/model, then click <b>Regenerate</b>.`;
         container.appendChild(warn);
     }
