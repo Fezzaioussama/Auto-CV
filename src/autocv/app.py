@@ -41,6 +41,7 @@ from .extensions import db, login_manager, csrf, limiter, migrate
 
 from . import llm_client  # loads .env and centralizes provider/model selection
 from . import latex_repair  # compile + LLM auto-repair of LaTeX
+from . import cv_export  # pure-Python PDF/Word fallback when no LaTeX toolchain
 from .parser import parse_job_description
 from .matcher import analyze_cv, optimize_cv_for_job
 from .latex_gen import render_cv, create_sample_cv  # noqa: F401 (render_cv used elsewhere)
@@ -513,7 +514,15 @@ def _register_routes(app: Flask) -> None:
     @login_required
     @limiter.limit(llm_limit)
     def render_latex():
-        """Render LaTeX to PDF, silently auto-repairing compilation errors via LLM."""
+        """Return a PDF of the CV.
+
+        Preferred path: compile the LaTeX (local ``pdflatex`` or an external
+        compile service), silently auto-repairing errors via the LLM. When no
+        LaTeX toolchain is available (e.g. Vercel serverless) or compilation
+        ultimately fails, fall back to a pure-Python PDF so the download always
+        returns a file. The ``X-PDF-Engine`` header reports which path was used.
+        """
+        download_name = f'cv_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
         try:
             data = request.get_json() or {}
             latex_content = data.get("latex", "")
@@ -521,30 +530,41 @@ def _register_routes(app: Flask) -> None:
             if not latex_content:
                 return jsonify({"error": "No LaTeX content provided"}), 400
 
+            # 1) Try a real LaTeX compile (skipped entirely when no toolchain).
+            result = None
             try:
                 result = latex_repair.render_pdf(latex_content)
             except FileNotFoundError:
-                return jsonify({
-                    "error": "pdflatex not found. Please install a LaTeX distribution."
-                }), 500
+                result = None  # no local pdflatex + no compile service → fallback
 
-            if not result.success:
-                return jsonify({
-                    "error": "LaTeX compilation failed",
-                    "details": result.error_details or "The document could not be compiled.",
-                }), 500
+            if result is not None and result.success and result.pdf_bytes:
+                response = send_file(
+                    BytesIO(result.pdf_bytes),
+                    mimetype="application/pdf",
+                    as_attachment=True,
+                    download_name=download_name,
+                )
+                response.headers["X-PDF-Engine"] = "latex"
+                response.headers["X-Latex-Repaired"] = "true" if result.repaired else "false"
+                if result.repaired:
+                    encoded = base64.b64encode(result.final_latex.encode("utf-8")).decode("ascii")
+                    if len(encoded) < 60000:
+                        response.headers["X-Corrected-Latex"] = encoded
+                return response
+
+            # 2) Fallback: clean pure-Python PDF (no LaTeX toolchain needed).
+            try:
+                pdf_bytes, _mime, _ext = cv_export.export_cv(latex_content, "pdf")
+            except cv_export.ExportError as exc:
+                return jsonify({"error": str(exc)}), 422
 
             response = send_file(
-                BytesIO(result.pdf_bytes),
+                BytesIO(pdf_bytes),
                 mimetype="application/pdf",
                 as_attachment=True,
-                download_name=f'cv_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf',
+                download_name=download_name,
             )
-            response.headers["X-Latex-Repaired"] = "true" if result.repaired else "false"
-            if result.repaired:
-                encoded = base64.b64encode(result.final_latex.encode("utf-8")).decode("ascii")
-                if len(encoded) < 60000:
-                    response.headers["X-Corrected-Latex"] = encoded
+            response.headers["X-PDF-Engine"] = "python"
             return response
         except Exception as e:  # noqa: BLE001
             return _server_error(e)

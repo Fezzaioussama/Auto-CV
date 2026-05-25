@@ -25,7 +25,8 @@ def test_export_docx_and_txt(client):
 
 def test_export_bad_format_and_empty(client):
     register(client, "exp2@example.com")
-    assert client.post("/api/export", json={"latex": SAMPLE_LATEX, "format": "pdf"}).status_code == 422
+    # 'rtf' is unsupported (docx/pdf/txt are the supported formats).
+    assert client.post("/api/export", json={"latex": SAMPLE_LATEX, "format": "rtf"}).status_code == 422
     assert client.post("/api/export", json={"latex": "", "format": "docx"}).status_code == 400
 
 
