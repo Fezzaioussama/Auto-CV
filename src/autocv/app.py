@@ -180,13 +180,32 @@ def create_app(config_object: type = Config) -> Flask:
     app.register_blueprint(account_bp)
 
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+        except Exception:
+            if _should_fail_on_db_init(app):
+                raise
+            app.logger.exception(
+                "Database initialization failed during startup; continuing so "
+                "public routes can still respond. Set DATABASE_URL to a valid "
+                "database; set AUTO_CREATE_DB=1 if startup should fail on "
+                "database initialization errors."
+            )
 
     _configure_observability(app)
     _register_error_handlers(app)
     _register_routes(app)
 
     return app
+
+
+def _should_fail_on_db_init(app: Flask) -> bool:
+    """Keep local/test failures loud; let serverless deploys boot for diagnostics."""
+    if app.config.get("TESTING"):
+        return True
+    if os.environ.get("AUTO_CREATE_DB", "").strip().lower() in {"1", "true", "yes", "on"}:
+        return True
+    return not (os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
 
 
 # ---------------------------------------------------------------------------
