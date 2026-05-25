@@ -72,6 +72,31 @@ def _str(name: str, default: str) -> str:
     return value.strip() if value and value.strip() else default
 
 
+def _drop_pgbouncer_param(uri: str) -> str:
+    """Strip the Prisma-only ``pgbouncer`` query flag from a Postgres URL.
+
+    Supabase's connection-string snippets (and the Prisma docs) tack
+    ``?pgbouncer=true`` onto the transaction-pooler URL. That flag is meaningful
+    only to Prisma; psycopg/libpq forwards it as a connection option and rejects
+    it with ``invalid connection option "pgbouncer"``, which breaks *every*
+    connection (startup table creation, register, login). Drop it so the pooler
+    URL works exactly as Supabase hands it out. Transaction-pooler behaviour is
+    still handled correctly via ``NullPool`` (see ``_database_engine_options``).
+    Any other query params (e.g. ``sslmode``) are preserved.
+    """
+    from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+
+    parts = urlsplit(uri)
+    if not parts.query:
+        return uri
+    kept = [
+        (key, value)
+        for key, value in parse_qsl(parts.query, keep_blank_values=True)
+        if key.lower() != "pgbouncer"
+    ]
+    return urlunsplit(parts._replace(query=urlencode(kept)))
+
+
 def _database_uri() -> str:
     default = f"sqlite:///{os.path.join(_INSTANCE_DIR, 'auto_cv.db')}"
     raw = os.environ.get("DATABASE_URL", "").strip()
@@ -91,6 +116,9 @@ def _database_uri() -> str:
         resolved = raw.replace("postgresql://", "postgresql+psycopg://", 1)
     else:
         resolved = raw
+
+    if resolved.startswith("postgresql"):
+        resolved = _drop_pgbouncer_param(resolved)
 
     # A production deployment MUST use a durable database. The SQLite fallback
     # lives on local disk — and on a serverless host (Vercel) that's an
