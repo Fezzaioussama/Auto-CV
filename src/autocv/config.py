@@ -76,20 +76,43 @@ def _database_uri() -> str:
     default = f"sqlite:///{os.path.join(_INSTANCE_DIR, 'auto_cv.db')}"
     raw = os.environ.get("DATABASE_URL", "").strip()
     if not raw:
-        return default
-    if "..." in raw or "<" in raw or ">" in raw:
+        resolved = default
+    elif "..." in raw or "<" in raw or ">" in raw:
         print(
             "[config] WARNING: DATABASE_URL still contains a placeholder; "
             "falling back to local SQLite storage.",
             file=sys.stderr,
             flush=True,
         )
-        return default
-    if raw.startswith("postgres://"):
-        return raw.replace("postgres://", "postgresql+psycopg://", 1)
-    if raw.startswith("postgresql://"):
-        return raw.replace("postgresql://", "postgresql+psycopg://", 1)
-    return raw
+        resolved = default
+    elif raw.startswith("postgres://"):
+        resolved = raw.replace("postgres://", "postgresql+psycopg://", 1)
+    elif raw.startswith("postgresql://"):
+        resolved = raw.replace("postgresql://", "postgresql+psycopg://", 1)
+    else:
+        resolved = raw
+
+    # A production deployment MUST use a durable database. The SQLite fallback
+    # lives on local disk — and on a serverless host (Vercel) that's an
+    # ephemeral, per-instance /tmp file. Accounts written during the register
+    # request then vanish before the follow-up request, which shows up as
+    # "registration didn't log me in" and "incorrect email or password" on a
+    # login that should work. Fail loudly here rather than silently losing data.
+    if resolved.startswith("sqlite") and _is_production():
+        print(
+            "[config] FATAL: DATABASE_URL is not set to a Postgres database, but "
+            "the app is running in production. The SQLite fallback is ephemeral "
+            "on serverless hosts (Vercel's /tmp), so user accounts will not "
+            "persist between requests. Set DATABASE_URL to your Supabase/Postgres "
+            "connection string (verify with `python scripts/check_db.py`).",
+            file=sys.stderr,
+            flush=True,
+        )
+        raise RuntimeError(
+            "DATABASE_URL must point to a Postgres database in production; the "
+            "SQLite fallback is ephemeral on serverless and loses accounts."
+        )
+    return resolved
 
 
 def _database_engine_options() -> dict:
