@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auto-cv"
+version = "1.0.0"
+description = "Flask web app that tailors a LaTeX CV to a job offer, renders a PDF, and runs an AI interview coach."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Proprietary" }
+authors = [{ name = "Auto-CV Team" }]
+keywords = ["flask", "cv", "resume", "latex", "llm", "ats"]
+
+# Abstract runtime dependencies. requirements.txt holds the pinned versions used
+# for reproducible installs (`pip install -r requirements.txt`); keep the two in
+# sync when bumping a floor here.
+dependencies = [
+    "Flask>=3.0",
+    "Flask-CORS>=4.0",
+    "Flask-SQLAlchemy>=3.1",
+    "Flask-Login>=0.6",
+    "Flask-Limiter>=3.8",
+    "Flask-WTF>=1.2",
+    "Flask-Migrate>=4.0",
+    "email-validator>=2.1",
+    "psycopg[binary]>=3.2",
+    "python-dotenv>=1.0",
+    "requests>=2.31",
+    "redis>=5.0",
+    "PyLaTeX>=1.4",
+    "nltk>=3.8",
+    "scikit-learn>=1.3",
+    "numpy>=1.24",
+    "pandas>=2.1",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    "pillow>=10.1",
+    "pypdf>=3.17",
+    "pdfplumber>=0.11",
+    "python-docx>=1.1",
+    "pytesseract>=0.3",
+    "pdf2image>=1.17",
+]
+
+[project.optional-dependencies]
+prod = ["gunicorn>=21"]
+monitoring = ["sentry-sdk[flask]>=2.0"]
+
+# Development tooling installed by default with `uv sync` (PEP 735).
+[dependency-groups]
+dev = ["pytest>=8.3"]
+
+[project.scripts]
+auto-cv = "autocv.__main__:main"
+
+[project.urls]
+Documentation = "docs/README.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]  # line length is handled by the formatter, not enforced
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]

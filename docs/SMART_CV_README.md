@@ -11,7 +11,7 @@ This system consists of two main components:
    - Job-specific variables that can be customized
    - Section markers for targeted modifications
 
-2. **Smart CV Generator** (`src/smart_cv_generator.py`)
+2. **Smart CV Generator** (`src/autocv/smart_cv_generator.py`)
    - Analyzes job descriptions and extracts key requirements
    - Generates optimized CV sections based on job analysis
    - Creates a tailored CV highlighting relevant skills and experiences
@@ -120,12 +120,13 @@ auto-cv-app/
 │   ├── template_main.tex          # Original template
 │   └── template_smart.tex         # Smart template (NEW)
 ├── src/
-│   ├── smart_cv_generator.py      # Smart CV generator (NEW)
-│   ├── matcher.py                 # CV matcher
-│   ├── latex_gen.py               # LaTeX generator
-│   └── parser.py                  # Job description parser
-├── requirements.txt               # Updated with new dependencies
-└── SMART_CV_README.md            # This file
+│   └── autocv/
+│       ├── smart_cv_generator.py  # Smart CV generator
+│       ├── matcher.py             # CV matcher
+│       ├── latex_gen.py           # LaTeX generator
+│       └── parser.py              # Job description parser
+├── requirements.txt               # Python dependencies
+└── docs/SMART_CV_README.md        # This file
 ```
 
 ## Dependencies
@@ -149,7 +150,7 @@ Optional for LLM integration:
 
 ### Customizing the Generator
 
-1. Modify `src/smart_cv_generator.py`
+1. Modify `src/autocv/smart_cv_generator.py`
 2. Adjust the section generation logic
 3. Add new section types as needed
 4. Update the job analysis patterns

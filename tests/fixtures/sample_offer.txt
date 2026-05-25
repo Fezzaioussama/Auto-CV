@@ -1,0 +1,11 @@
+Fictional job offer for testing
+
+Example Company is hiring an AI Engineer.
+
+Build Python services with Flask, SQL, Docker, and cloud infrastructure.
+Develop retrieval-augmented generation systems and evaluate language models.
+Collaborate with product teams, write tests, and document technical decisions.
+
+Requirements: Python, machine learning, Git, APIs, SQL, and automated testing.
+Preferred: PyTorch, Kubernetes, data pipelines, and model evaluation.
+Location: Remote. Experience: 3 or more years.

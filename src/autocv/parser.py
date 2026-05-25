@@ -4,6 +4,7 @@ Extracts skills, qualifications, and requirements from job descriptions.
 """
 
 import json
+import os
 import re
 import nltk
 from nltk.corpus import stopwords
@@ -22,6 +23,14 @@ except ImportError:  # pragma: no cover
     except ImportError:  # pragma: no cover
         complete = None
         Task = None
+
+# Vercel functions can only write to /tmp at runtime. NLTK downloads small data
+# packages on first use, so point it at writable scratch space in that environment.
+if (os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV")) and not os.environ.get("NLTK_DATA"):
+    _nltk_data_dir = "/tmp/nltk_data"
+    os.environ["NLTK_DATA"] = _nltk_data_dir
+    if _nltk_data_dir not in nltk.data.path:
+        nltk.data.path.insert(0, _nltk_data_dir)
 
 # Download required NLTK data
 try:

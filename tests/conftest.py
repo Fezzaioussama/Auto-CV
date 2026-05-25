@@ -31,18 +31,22 @@ _DB.close()
 os.environ["DATABASE_URL"] = f"sqlite:///{_DB.name}"
 
 import pytest  # noqa: E402
-import main as main_module  # noqa: E402
+from autocv import create_app  # noqa: E402
+
+# Build the app once for the test session (mirrors a long-lived process). Config
+# is read from the environment set above when the package is imported.
+_application = create_app()
 
 
 @pytest.fixture()
 def app():
-    application = main_module.app
+    application = _application
     # Reset the schema in a *temporary* context. Do NOT keep an app context open
     # during the test: Flask-Login caches current_user on ``g`` (bound to the app
     # context), so a long-lived context would bleed one client's identity into
     # another's requests. Each test_client request pushes its own fresh context.
     with application.app_context():
-        from extensions import db
+        from autocv.extensions import db
         db.drop_all()
         db.create_all()
     yield application

@@ -222,7 +222,7 @@ Provide specific, actionable recommendations based on the job requirements."""
     
     def _fallback_analysis(self, cv_content: str, job_description: str) -> Dict:
         """Fallback rule-based analysis when LLM is unavailable."""
-        from src.parser import JobDescriptionParser
+        from .parser import JobDescriptionParser
         
         parser = JobDescriptionParser()
         job_analysis = parser.parse(job_description)
@@ -899,13 +899,19 @@ def optimize_cv_for_job(cv_content: str, job_description: Union[str, Dict],
         return matcher.generate_cv_modifications(cv_content, job_text, analysis)
 
     def _do_rewrite():
-        from section_rewriter import rewrite_cv_sections
+        try:
+            from section_rewriter import rewrite_cv_sections
+        except ImportError:
+            from .section_rewriter import rewrite_cv_sections
         return rewrite_cv_sections(
             cv_content, job_description, job_text, analysis, language=language
         )
 
     def _do_proposals():
-        from section_rewriter import propose_additions
+        try:
+            from section_rewriter import propose_additions
+        except ImportError:
+            from .section_rewriter import propose_additions
         return propose_additions(
             cv_content, job_description, job_text, analysis, language=language
         )

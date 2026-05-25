@@ -127,14 +127,14 @@ needed, and escape all dynamic values inside the string.
 2. Give it a stable `id`.
 3. Add behavior in `static/script.js`.
 4. Add loading and error states.
-5. If it calls the backend, add or update the route in `main.py`.
+5. If it calls the backend, add or update the route in `src/autocv/app.py`.
 6. Document the API change in `docs/API_REFERENCE.md`.
 
 ## Adding A New Interview Feature
 
 1. Add controls or containers in `templates/interview.html`.
 2. Wire events in `static/interview.js`.
-3. Update `src/interview_agent.py` if the feature changes generation/review
+3. Update `src/autocv/interview_agent.py` if the feature changes generation/review
    behavior.
 4. Keep fallback behavior working.
 5. Document the new request/response fields.

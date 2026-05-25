@@ -174,7 +174,13 @@ def compile_latex(latex_content: str, workdir: str, *, timeout: float = COMPILE_
                 "-no-shell-escape",        # never run external commands (\write18)
                 "-interaction=nonstopmode",
                 "-output-directory", workdir,
-                tex_file,
+                # Pass the file by basename, not absolute path: the paranoid
+                # ``openin_any=p`` env (set below) makes TeX reject absolute
+                # paths even for the main input file, so an absolute path here
+                # fails with "I can't find file". cwd is pinned to workdir, so
+                # the basename resolves while \input of outside files stays
+                # blocked.
+                os.path.basename(tex_file),
             ],
             capture_output=True,
             timeout=timeout,

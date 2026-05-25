@@ -5,7 +5,7 @@ import pathlib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 
-import web_fetch as wf  # noqa: E402
+from autocv import web_fetch as wf  # noqa: E402
 
 from conftest import register  # noqa: E402
 

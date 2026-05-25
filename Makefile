@@ -4,7 +4,7 @@ PORT ?= 5000
 PID_FILE ?= .auto-cv.pid
 LOG_FILE ?= /tmp/auto-cv-app-$(PORT).log
 
-.PHONY: help install run start stop restart status logs check py-check js-check clean
+.PHONY: help install run start stop restart status logs check py-check js-check test clean
 
 help:
 	@echo "Auto-CV Make targets"
@@ -16,14 +16,15 @@ help:
 	@echo "  make status   Show processes listening on port $(PORT)"
 	@echo "  make logs     Follow the app log"
 	@echo "  make check    Run Python compile check and JS syntax check"
-	@echo "  make install  Install Python dependencies"
+	@echo "  make test     Run the pytest suite (tests/)"
+	@echo "  make install  Sync the uv environment (.venv) from pyproject.toml"
 	@echo "  make clean    Remove local runtime files"
 
 install:
-	pip install -r requirements.txt
+	uv sync
 
 run:
-	python main.py
+	PORT=$(PORT) uv run python -m autocv
 
 start:
 	@if ss -ltnp | rg -q ':$(PORT)\b'; then \
@@ -33,7 +34,7 @@ start:
 		exit 1; \
 	fi
 	@echo "Starting Auto-CV on http://127.0.0.1:$(PORT) ..."
-	@nohup python main.py > "$(LOG_FILE)" 2>&1 & echo $$! > "$(PID_FILE)"
+	@PORT=$(PORT) nohup uv run python -m autocv > "$(LOG_FILE)" 2>&1 & echo $$! > "$(PID_FILE)"
 	@sleep 1
 	@$(MAKE) --no-print-directory status
 	@echo "Logs: $(LOG_FILE)"
@@ -67,10 +68,13 @@ logs:
 check: py-check js-check
 
 py-check:
-	python -m compileall main.py src
+	uv run python -m compileall main.py src scripts
 
 js-check:
 	node --check static/interview.js
+
+test:
+	uv run pytest
 
 clean:
 	rm -f "$(PID_FILE)"
