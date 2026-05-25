@@ -437,7 +437,7 @@ def _register_routes(app: Flask) -> None:
         ``/api/demo`` flow.
         """
         try:
-            data = request.get_json()
+            data = request.get_json(silent=True) or {}
             text = data.get("text", "")
 
             if not text:
@@ -463,7 +463,7 @@ def _register_routes(app: Flask) -> None:
     def analyze_cv_endpoint():
         """Analyze a CV against a job description."""
         try:
-            data = request.get_json()
+            data = request.get_json(silent=True) or {}
             cv_latex = data.get("cv_latex", "")
             job_description = data.get("job_description", {})
 
@@ -483,7 +483,7 @@ def _register_routes(app: Flask) -> None:
     def optimize_cv_endpoint():
         """Optimize a CV for a specific job."""
         try:
-            data = request.get_json()
+            data = request.get_json(silent=True) or {}
             cv_latex = data.get("cv_latex", "")
             job_description = data.get("job_description", {})
             language = data.get("language") or "en"

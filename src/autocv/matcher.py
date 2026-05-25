@@ -12,9 +12,11 @@ from typing import Dict, List, Optional, Union
 # All LLM access is centralized in llm_client, which picks the provider
 # (local vLLM or OpenRouter) and per-task model from the environment (.env).
 try:  # importable both as a bare module (main.py) and as the src package
-    from llm_client import complete, Task
+    from llm_client import Task
+    from llm_json import request_json
 except ImportError:  # pragma: no cover
-    from .llm_client import complete, Task
+    from .llm_client import Task
+    from .llm_json import request_json
 
 
 # Surface forms that should be treated as the same skill when comparing the
@@ -106,6 +108,12 @@ class OptimizedSection:
     content: str
 
 
+_ANALYSIS_SYSTEM = (
+    "You are a technical recruiter. Respond ONLY with the requested JSON "
+    "object, no prose and no markdown fences."
+)
+
+
 class CVMatcher:
     """Matches CV content with job requirements using LLM analysis."""
     
@@ -133,17 +141,22 @@ class CVMatcher:
         Returns:
             Dict with analysis results including matches, gaps, and suggestions
         """
-        prompt = self._build_analysis_prompt(cv_content, job_description)
-        
-        # Try to get LLM response
-        try:
-            response = self._call_llm_api(prompt)
-            if response:
-                return self._parse_analysis_response(response)
-        except Exception as e:
-            print(f"LLM API call failed: {e}")
-        
-        # Fallback to rule-based analysis
+        # Route through the hardened JSON path: it extracts JSON from noisy
+        # output and, on malformed/incomplete JSON, asks the model to repair it
+        # rather than silently degrading to the default/empty analysis.
+        obj, _meta = request_json(
+            self._build_analysis_prompt(cv_content, job_description),
+            system_prompt=_ANALYSIS_SYSTEM,
+            expect="object",
+            task=Task.ANALYSIS,
+            model=self.model,  # None -> resolved by task/provider
+            temperature=0.2,
+            max_tokens=1500,
+            log_prefix="matcher",
+        )
+        if isinstance(obj, dict):
+            return obj
+        # LLM unreachable or unrepairable: fall back to rule-based analysis.
         return self._fallback_analysis(cv_content, job_description)
     
     def _build_analysis_prompt(self, cv_content: str, job_description: str) -> str:
@@ -177,48 +190,6 @@ Please provide your analysis in the following JSON format:
 }}
 
 Provide specific, actionable recommendations based on the job requirements."""
-    
-    def _call_llm_api(self, prompt: str) -> Optional[str]:
-        """Get the analysis JSON via the central LLM client (local/OpenRouter)."""
-        return complete(
-            prompt,
-            system_prompt=(
-                "You are a technical recruiter. Respond ONLY with the "
-                "requested JSON object, no prose and no markdown fences."
-            ),
-            task=Task.ANALYSIS,
-            model=self.model,  # None -> resolved by task/provider
-            temperature=0.2,  # Low temperature for focused, stable JSON
-            max_tokens=1500,
-            log_prefix="matcher",
-        )
-    
-    def _parse_analysis_response(self, response: str) -> Dict:
-        """Parse the LLM response into structured format."""
-        import json
-
-        # Some models wrap reasoning in <think>...</think>; drop it first.
-        response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL)
-
-        # Try to extract JSON from response
-        try:
-            # Try direct JSON parsing
-            start_idx = response.find('{')
-            end_idx = response.rfind('}') + 1
-
-            if start_idx != -1 and end_idx > start_idx:
-                json_str = response[start_idx:end_idx]
-                return json.loads(json_str)
-        except json.JSONDecodeError:
-            pass
-        
-        # If JSON parsing fails, create default structure
-        return {
-            "skills_match": {"matched": [], "missing": [], "strong_matches": []},
-            "experience_match": {"relevant_experience": [], "needs_highlighting": [], "weak_matches": []},
-            "recommendations": {"additions": [], "emphasize": [], "rephrase": []},
-            "match_percentage": 50
-        }
     
     def _fallback_analysis(self, cv_content: str, job_description: str) -> Dict:
         """Fallback rule-based analysis when LLM is unavailable."""
@@ -277,15 +248,18 @@ Provide specific, actionable recommendations based on the job requirements."""
         Returns:
             Dict with suggested modifications
         """
-        prompt = self._build_modification_prompt(cv_content, job_description, analysis)
-        
-        try:
-            response = self._call_llm_api(prompt)
-            if response:
-                return self._parse_modification_response(response)
-        except Exception as e:
-            print(f"LLM API call failed: {e}")
-        
+        obj, _meta = request_json(
+            self._build_modification_prompt(cv_content, job_description, analysis),
+            system_prompt=_ANALYSIS_SYSTEM,
+            expect="object",
+            task=Task.ANALYSIS,
+            model=self.model,
+            temperature=0.2,
+            max_tokens=1500,
+            log_prefix="matcher",
+        )
+        if isinstance(obj, dict):
+            return obj
         return self._fallback_modifications(analysis)
     
     def _build_modification_prompt(self, cv_content: str, job_description: str, 
@@ -317,30 +291,6 @@ Provide specific modifications in this JSON format:
 }}
 
 Keep modifications concise and focused on the job requirements."""
-    
-    def _parse_modification_response(self, response: str) -> Dict:
-        """Parse the modification response."""
-        import json
-
-        response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL)
-
-        try:
-            start_idx = response.find('{')
-            end_idx = response.rfind('}') + 1
-            
-            if start_idx != -1 and end_idx > start_idx:
-                json_str = response[start_idx:end_idx]
-                return json.loads(json_str)
-        except json.JSONDecodeError:
-            pass
-        
-        return {
-            "summary_modification": "",
-            "skills_modification": "",
-            "experience_modifications": [],
-            "action_verbs": [],
-            "keywords_to_add": []
-        }
     
     def _fallback_modifications(self, analysis: Dict) -> Dict:
         """Fallback modification suggestions."""

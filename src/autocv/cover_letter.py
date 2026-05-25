@@ -8,15 +8,16 @@ returns something usable.
 
 from __future__ import annotations
 
-import json
 import re
 from typing import Dict, List, Union
 
 try:  # importable both as a bare module (main.py) and as the src package
-    from llm_client import complete, Task
+    from llm_client import Task
+    from llm_json import request_json
     from section_rewriter import LANGUAGE_NAMES
 except ImportError:  # pragma: no cover
-    from .llm_client import complete, Task
+    from .llm_client import Task
+    from .llm_json import request_json
     from .section_rewriter import LANGUAGE_NAMES
 
 
@@ -81,21 +82,6 @@ def _build_prompt(cv_text: str, ctx: Dict[str, str], kinds: List[str],
     )
 
 
-def _parse_json_object(raw: str) -> Dict[str, str]:
-    text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL)
-    fence = re.search(r"```(?:json)?\s*\n?(.*?)```", text, re.DOTALL)
-    if fence:
-        text = fence.group(1)
-    start, end = text.find("{"), text.rfind("}") + 1
-    if start == -1 or end <= start:
-        return {}
-    try:
-        data = json.loads(text[start:end])
-    except (ValueError, TypeError):
-        return {}
-    return {k: str(v) for k, v in data.items()} if isinstance(data, dict) else {}
-
-
 def _fallback(kind: str, ctx: Dict[str, str], applicant_name: str) -> str:
     role = ctx["title"] or "the role"
     company = ctx["company"] or "your company"
@@ -152,16 +138,17 @@ def generate_outreach(
 
     results: Dict[str, str] = {}
     try:
-        raw = complete(
+        obj, _meta = request_json(
             _build_prompt(cv_text, ctx, kinds, applicant_name, language),
             system_prompt=_SYSTEM_PROMPT,
+            expect="object",
             task=Task.PROPOSAL,
             temperature=0.5,
             max_tokens=1800,
             log_prefix="cover-letter",
         )
-        if raw:
-            results = _parse_json_object(raw)
+        if isinstance(obj, dict):
+            results = {k: str(v) for k, v in obj.items()}
     except Exception as exc:  # noqa: BLE001
         print(f"[cover-letter] generation failed, using fallback: {exc}", flush=True)
 
