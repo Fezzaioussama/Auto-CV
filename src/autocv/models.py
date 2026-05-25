@@ -16,6 +16,7 @@ Entities
 
 from __future__ import annotations
 
+import secrets
 from datetime import datetime
 
 from flask_login import UserMixin
@@ -38,6 +39,11 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     name = db.Column(db.String(120), nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
+    # Per-user secret that every login session and "remember me" cookie is bound
+    # to (see ``get_id``). Rotating it instantly invalidates every existing
+    # session/cookie for this account — the basis for "sign out everywhere" and
+    # for killing stale sessions on a password reset/change.
+    session_token = db.Column(db.String(32), nullable=True, default=lambda: secrets.token_hex(16))
     created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
     # Email confirmation. Login is allowed while unverified unless
     # REQUIRE_EMAIL_VERIFICATION is on; the UI nudges the user to confirm.
@@ -56,6 +62,19 @@ class User(UserMixin, db.Model):
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
 
+    def get_id(self) -> str:
+        """Identity stored in the session/remember cookie (Flask-Login).
+
+        We append the rotatable ``session_token`` to the user id so that
+        rotating the token (password reset/change, sign-out-everywhere) makes
+        every previously-issued session and remember-me cookie fail to load.
+        """
+        return f"{self.id}:{self.session_token or ''}"
+
+    def rotate_session_token(self) -> None:
+        """Issue a new session token, invalidating all existing logins."""
+        self.session_token = secrets.token_hex(16)
+
     def to_dict(self) -> dict:
         return {
             "id": self.id,
@@ -66,8 +85,26 @@ class User(UserMixin, db.Model):
 
 
 @login_manager.user_loader
-def load_user(user_id: str):  # noqa: D401 - Flask-Login callback
-    return db.session.get(User, int(user_id)) if user_id else None
+def load_user(composite_id: str):  # noqa: D401 - Flask-Login callback
+    """Resolve the ``"<id>:<session_token>"`` value from the cookie to a User.
+
+    Returns ``None`` (i.e. logged out) if the user is gone or the token no
+    longer matches — which is how a rotated ``session_token`` invalidates old
+    sessions. Sessions issued before this scheme (a bare integer id) carry no
+    token and are rejected once the account has one, forcing a fresh login.
+    """
+    if not composite_id:
+        return None
+    raw_id, _, token = str(composite_id).partition(":")
+    try:
+        user = db.session.get(User, int(raw_id))
+    except (TypeError, ValueError):
+        return None
+    if user is None:
+        return None
+    if user.session_token and token != user.session_token:
+        return None
+    return user
 
 
 class Job(db.Model):

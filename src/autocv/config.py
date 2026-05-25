@@ -20,6 +20,7 @@ from __future__ import annotations
 import os
 import secrets
 import sys
+from datetime import timedelta
 
 try:  # python-dotenv is a declared dependency; degrade gracefully if absent.
     from dotenv import load_dotenv
@@ -145,6 +146,14 @@ class Config:
     SESSION_COOKIE_SAMESITE = _str("SESSION_COOKIE_SAMESITE", "Lax")
     SESSION_COOKIE_SECURE = _bool("SESSION_COOKIE_SECURE", default=_is_production())
     PERMANENT_SESSION_LIFETIME = _int("SESSION_LIFETIME_DAYS", 14) * 24 * 3600
+
+    # "Remember me" cookie (Flask-Login). Apply the same hardening as the
+    # session cookie so the long-lived login token is HTTPS-only in production
+    # and never sent on cross-site requests; its lifetime tracks the session.
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SECURE = _bool("SESSION_COOKIE_SECURE", default=_is_production())
+    REMEMBER_COOKIE_SAMESITE = _str("SESSION_COOKIE_SAMESITE", "Lax")
+    REMEMBER_COOKIE_DURATION = timedelta(days=_int("SESSION_LIFETIME_DAYS", 14))
 
     # CSRF: protect browser-originated state changes. The JSON API sends the
     # token via the X-CSRFToken header (see static/csrf.js).
