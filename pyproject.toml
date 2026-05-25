@@ -7,7 +7,7 @@ name = "auto-cv"
 version = "1.0.0"
 description = "Flask web app that tailors a LaTeX CV to a job offer, renders a PDF, and runs an AI interview coach."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.12,<3.13"
 license = { text = "Proprietary" }
 authors = [{ name = "Auto-CV Team" }]
 keywords = ["flask", "cv", "resume", "latex", "llm", "ats"]
@@ -66,7 +66,7 @@ addopts = "-q"
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py312"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -75,4 +75,4 @@ ignore = ["E501"]  # line length is handled by the formatter, not enforced
 
 [tool.black]
 line-length = 100
-target-version = ["py39"]
+target-version = ["py312"]
