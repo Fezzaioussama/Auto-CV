@@ -4,8 +4,8 @@ This guide explains how to run Auto-CV locally and where to make changes.
 
 ## Prerequisites
 
-- Python 3.8 or newer.
-- `pip`.
+- [uv](https://docs.astral.sh/uv/) (manages the Python version + dependencies).
+- Python 3.10+ (uv installs/pins it from `.python-version`).
 - A LaTeX distribution with `pdflatex` if you need PDF rendering.
 - Network access to either a local OpenAI-compatible server or OpenRouter if
   you want live AI rewriting and interview generation.
@@ -15,25 +15,20 @@ This guide explains how to run Auto-CV locally and where to make changes.
 From the project root:
 
 ```bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('stopwords')"
+uv sync   # creates .venv and installs the project + dev dependencies
+uv run python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('stopwords')"
 cp .env.example .env
 ```
 
-On Windows, activate the environment with:
-
-```bash
-venv\Scripts\activate
-```
+uv manages the virtual environment for you — there is no `activate` step; prefix
+commands with `uv run`. (You can still `source .venv/bin/activate` if you prefer.)
 
 ## Run The App
 
 Default development run:
 
 ```bash
-python main.py
+uv run python -m autocv   # or: make run
 ```
 
 That starts the app on:
@@ -45,12 +40,12 @@ http://localhost:5000
 If port `5000` is busy, use Flask directly:
 
 ```bash
-flask --app main run --host 0.0.0.0 --port 5001 --debug
+uv run flask --app autocv run --host 0.0.0.0 --port 5001 --debug
 ```
 
 ## Environment Configuration
 
-All LLM access goes through `src/llm_client.py`. It loads `.env` from the
+All LLM access goes through `src/autocv/llm_client.py`. It loads `.env` from the
 project root and selects the provider, base URL, API key, timeout, and model
 for each task.
 
@@ -82,15 +77,15 @@ Important environment variables:
 
 | Variable | Used by | Purpose |
 | --- | --- | --- |
-| `SOURCE_LLM` | `src/llm_client.py` | Selects `local` or `openrouter`. |
-| `LOCAL_LLM_URL` | `src/llm_client.py` | Base URL for a local OpenAI-compatible server. |
-| `LOCAL_LLM_MODEL` | `src/llm_client.py` | Default local model. |
-| `LOCAL_LLM_API_KEY` | `src/llm_client.py` | Optional local bearer token. |
-| `OPENROUTER_API_KEY` | `src/llm_client.py` | Required when `SOURCE_LLM=openrouter`. |
-| `OPENROUTER_MODEL` | `src/llm_client.py` | Default OpenRouter model. |
-| `OPENROUTER_BASE_URL` | `src/llm_client.py` | OpenRouter API base URL. Rarely changed. |
-| `LLM_CONNECT_TIMEOUT` | `src/llm_client.py` | Connection timeout in seconds. |
-| `LLM_TIMEOUT` | `src/llm_client.py` | Read timeout in seconds. |
+| `SOURCE_LLM` | `src/autocv/llm_client.py` | Selects `local` or `openrouter`. |
+| `LOCAL_LLM_URL` | `src/autocv/llm_client.py` | Base URL for a local OpenAI-compatible server. |
+| `LOCAL_LLM_MODEL` | `src/autocv/llm_client.py` | Default local model. |
+| `LOCAL_LLM_API_KEY` | `src/autocv/llm_client.py` | Optional local bearer token. |
+| `OPENROUTER_API_KEY` | `src/autocv/llm_client.py` | Required when `SOURCE_LLM=openrouter`. |
+| `OPENROUTER_MODEL` | `src/autocv/llm_client.py` | Default OpenRouter model. |
+| `OPENROUTER_BASE_URL` | `src/autocv/llm_client.py` | OpenRouter API base URL. Rarely changed. |
+| `LLM_CONNECT_TIMEOUT` | `src/autocv/llm_client.py` | Connection timeout in seconds. |
+| `LLM_TIMEOUT` | `src/autocv/llm_client.py` | Read timeout in seconds. |
 | `LLM_MAX_WORKERS` | `section_rewriter.py` through `llm_client.py` | Max parallel section rewrite calls. |
 
 Per-task model overrides:
@@ -126,12 +121,12 @@ Auto-CV runs as a multi-user web app with accounts. The relevant pieces:
 
 | File | Responsibility |
 | --- | --- |
-| `src/config.py` | Env-driven config: debug, `SECRET_KEY`, DB URL, cookies, limits. |
-| `src/extensions.py` | Unbound `db`, `login_manager`, `csrf`, `limiter` instances. |
-| `src/models.py` | `User`, `Job`, `CVDocument`, `CVVersion`, `CoverLetter`. |
-| `src/auth.py` | Register / login / logout blueprint (`templates/login.html`, `register.html`). |
-| `src/workspace.py` | Per-user saved jobs + CV version history API. |
-| `src/features.py` | File extraction, templates, cover-letter endpoints. |
+| `src/autocv/config.py` | Env-driven config: debug, `SECRET_KEY`, DB URL, cookies, limits. |
+| `src/autocv/extensions.py` | Unbound `db`, `login_manager`, `csrf`, `limiter` instances. |
+| `src/autocv/models.py` | `User`, `Job`, `CVDocument`, `CVVersion`, `CoverLetter`. |
+| `src/autocv/auth.py` | Register / login / logout blueprint (`templates/login.html`, `register.html`). |
+| `src/autocv/workspace.py` | Per-user saved jobs + CV version history API. |
+| `src/autocv/features.py` | File extraction, templates, cover-letter endpoints. |
 
 Key environment variables (see `.env.example` for the full list):
 
@@ -172,14 +167,14 @@ FLASK_ENV=development SECRET_KEY=dev python -c "import main; print('routes:', le
 
 | Change | Files to inspect first |
 | --- | --- |
-| Add a new optimizer step | `templates/index.html`, `static/script.js`, `main.py` |
-| Change LLM provider/model behavior | `src/llm_client.py`, `.env.example` |
-| Change job parsing | `src/parser.py`, `src/matcher.py` |
-| Change match scoring | `src/matcher.py` |
-| Change CV rewrite behavior | `src/section_rewriter.py`, `src/matcher.py` |
-| Change PDF rendering | `main.py`, `src/latex_gen.py` |
-| Change interview generation | `src/interview_agent.py`, `static/interview.js` |
-| Change standalone smart CV generation | `src/smart_cv_generator.py`, `src/llm_client.py` |
+| Add a new optimizer step | `templates/index.html`, `static/script.js`, `src/autocv/app.py` |
+| Change LLM provider/model behavior | `src/autocv/llm_client.py`, `.env.example` |
+| Change job parsing | `src/autocv/parser.py`, `src/autocv/matcher.py` |
+| Change match scoring | `src/autocv/matcher.py` |
+| Change CV rewrite behavior | `src/autocv/section_rewriter.py`, `src/autocv/matcher.py` |
+| Change PDF rendering | `src/autocv/app.py`, `src/autocv/latex_gen.py` |
+| Change interview generation | `src/autocv/interview_agent.py`, `static/interview.js` |
+| Change standalone smart CV generation | `src/autocv/smart_cv_generator.py`, `src/autocv/llm_client.py` |
 | Change page styling | `static/style.css`, `static/interview.css` |
 
 ## Browser Cache Busting
@@ -195,14 +190,20 @@ version in the template or clear the browser cache.
 
 ## Current Test Commands
 
-There is not yet a full `pytest` test suite. Current scripts are:
+The automated test suite lives in `tests/` and runs with pytest:
 
 ```bash
-python test_smart_cv.py
-python test_vllm_cv.py
+make test          # or: uv run pytest
 ```
 
-`test_vllm_cv.py` is a legacy local-vLLM smoke script with an explicit endpoint
+There are also two standalone smoke scripts (not part of the pytest suite):
+
+```bash
+uv run python scripts/test_smart_cv.py
+uv run python scripts/test_vllm_cv.py
+```
+
+`scripts/test_vllm_cv.py` is a legacy local-vLLM smoke script with an explicit endpoint
 and model in the file. If that endpoint is offline, expect the connection part
 to fail. Update the script before using it to test another provider.
 

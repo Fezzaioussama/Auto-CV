@@ -19,12 +19,12 @@ Use this guide when changing or debugging Auto-CV.
 
 For backend changes:
 
-- Validate request inputs in `main.py`.
+- Validate request inputs in `src/autocv/app.py` (or the relevant blueprint).
 - Keep response keys compatible with the frontend.
 - Preserve fallback behavior when the LLM is unavailable.
 - Log enough detail for failures, but avoid dumping unnecessary private data.
 - Update `docs/API_REFERENCE.md` if request or response shapes change.
-- Keep `src/llm_client.py`, `.env.example`, and `docs/DEVELOPMENT.md`
+- Keep `src/autocv/llm_client.py`, `.env.example`, and `docs/DEVELOPMENT.md`
   synchronized if provider/model configuration changes.
 
 For frontend changes:
@@ -44,7 +44,7 @@ For LLM prompt changes:
 
 For LLM provider/configuration changes:
 
-- Make the change in `src/llm_client.py`.
+- Make the change in `src/autocv/llm_client.py`.
 - Update `.env.example`.
 - Update [DEVELOPMENT.md](DEVELOPMENT.md).
 - Confirm `/api/llm/health` still returns a secret-free configuration string.
@@ -62,7 +62,7 @@ For LaTeX changes:
 Run the app:
 
 ```bash
-python main.py
+uv run python -m autocv
 ```
 
 Check active LLM configuration:
@@ -74,8 +74,8 @@ curl http://localhost:5000/api/llm/health
 Run available scripts:
 
 ```bash
-python test_smart_cv.py
-python test_vllm_cv.py
+uv run python scripts/test_smart_cv.py
+uv run python scripts/test_vllm_cv.py
 ```
 
 Manual smoke test:
@@ -96,14 +96,14 @@ Manual smoke test:
 
 | Symptom | Likely cause | Where to inspect |
 | --- | --- | --- |
-| Job parsing returns few skills | `common_skills` does not contain the role's vocabulary | `src/parser.py` |
-| Match score seems wrong | Skill aliases or normalization are incomplete | `src/matcher.py` |
-| Optimize takes a long time | LLM endpoint is slow or multiple section rewrites are running | `src/matcher.py`, `src/section_rewriter.py` |
-| `/api/llm/health` reports the wrong provider | `.env` is missing or `SOURCE_LLM` is not set as expected | `.env`, `.env.example`, `src/llm_client.py` |
-| OpenRouter calls are skipped | `SOURCE_LLM=openrouter` but `OPENROUTER_API_KEY` is empty | `.env`, `src/llm_client.py` |
-| Rewritten sections is empty | LLM unavailable or outputs failed validation | `src/section_rewriter.py` |
-| PDF preview fails | Invalid LaTeX, missing package, or missing `pdflatex` | `main.py`, terminal logs |
-| Interview page shows fallback templates | LLM generation failed or returned invalid JSON | `src/interview_agent.py` |
+| Job parsing returns few skills | `common_skills` does not contain the role's vocabulary | `src/autocv/parser.py` |
+| Match score seems wrong | Skill aliases or normalization are incomplete | `src/autocv/matcher.py` |
+| Optimize takes a long time | LLM endpoint is slow or multiple section rewrites are running | `src/autocv/matcher.py`, `src/autocv/section_rewriter.py` |
+| `/api/llm/health` reports the wrong provider | `.env` is missing or `SOURCE_LLM` is not set as expected | `.env`, `.env.example`, `src/autocv/llm_client.py` |
+| OpenRouter calls are skipped | `SOURCE_LLM=openrouter` but `OPENROUTER_API_KEY` is empty | `.env`, `src/autocv/llm_client.py` |
+| Rewritten sections is empty | LLM unavailable or outputs failed validation | `src/autocv/section_rewriter.py` |
+| PDF preview fails | Invalid LaTeX, missing package, or missing `pdflatex` | `src/autocv/app.py`, `src/autocv/latex_repair.py`, terminal logs |
+| Interview page shows fallback templates | LLM generation failed or returned invalid JSON | `src/autocv/interview_agent.py` |
 | Buttons do nothing | Template ID changed or script failed to load | Browser console, `static/*.js` |
 | Styling is stale | Browser cached old static assets | query versions in templates |
 
@@ -123,7 +123,7 @@ tracked, remove it from git rather than changing `.gitignore` to allow it.
 
 ## Adding A New API Endpoint
 
-1. Add the route in `main.py`.
+1. Add the route in `src/autocv/app.py` (or the relevant blueprint under `src/autocv/`).
 2. Validate `request.get_json()` safely.
 3. Return consistent JSON:
 
@@ -148,7 +148,7 @@ or:
 ## Adding Or Changing An LLM Task
 
 1. Add or reuse a task identifier in `llm_client.Task`.
-2. Call `complete(...)` or `chat(...)` from `src/llm_client.py`.
+2. Call `complete(...)` or `chat(...)` from `src/autocv/llm_client.py`.
 3. Pass the task name so per-task model overrides work.
 4. Add matching variables to `.env.example` if the task needs an override.
 5. Keep the caller's fallback path intact when the LLM returns `None`.
@@ -174,8 +174,8 @@ Recommended implementation path:
 
 Skills appear in two important places:
 
-- `src/parser.py` for extracting skills from the job offer.
-- `src/matcher.py` for canonicalizing aliases and checking CV coverage.
+- `src/autocv/parser.py` for extracting skills from the job offer.
+- `src/autocv/matcher.py` for canonicalizing aliases and checking CV coverage.
 
 When adding a new skill:
 

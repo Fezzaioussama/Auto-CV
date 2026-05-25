@@ -1,6 +1,6 @@
 # API Reference
 
-All API routes are defined in `main.py`. Routes return JSON except
+All API routes are defined in `src/autocv/app.py`. Routes return JSON except
 `/api/render-latex`, which returns a PDF on success.
 
 ## `GET /`
@@ -101,7 +101,7 @@ Analyzes a CV against an already parsed or raw job description.
 }
 ```
 
-The exact `analysis` object may contain additional fields from `src/matcher.py`.
+The exact `analysis` object may contain additional fields from `src/autocv/matcher.py`.
 
 ## `POST /api/optimize-cv`
 

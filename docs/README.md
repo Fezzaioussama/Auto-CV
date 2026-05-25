@@ -18,7 +18,7 @@ questions from the same CV and job context.
 | [FRONTEND.md](FRONTEND.md) | Template/static file structure and browser-side state flow. |
 | [MAINTENANCE.md](MAINTENANCE.md) | Testing, debugging, release checks, and common failure modes. |
 | [INSTALLATION.md](INSTALLATION.md) | Existing installation guide for basic environment setup. |
-| [../ROADMAP.md](../ROADMAP.md) | Product feature roadmap and recommended build order. |
+| [ROADMAP.md](ROADMAP.md) | Product feature roadmap and recommended build order. |
 
 ## Main Application Surfaces
 
@@ -36,14 +36,15 @@ questions from the same CV and job context.
 
 | Path | Responsibility |
 | --- | --- |
-| `main.py` | Flask app, route definitions, PDF rendering endpoint. |
-| `src/llm_client.py` | Central LLM provider, model, timeout, and API-key configuration. |
-| `src/parser.py` | Rule-based job description parsing and skill extraction. |
-| `src/matcher.py` | CV/job match analysis and optimization orchestration. |
-| `src/section_rewriter.py` | Section-level LLM rewrite and optional addition proposals. |
-| `src/interview_agent.py` | Interview question generation and answer/code review. |
-| `src/smart_cv_generator.py` | Standalone smart CV generation path and legacy test-script workflow. |
-| `src/latex_gen.py` | Sample CV and LaTeX generation helpers. |
+| `src/autocv/app.py` | Flask application factory (`create_app`), route definitions, PDF rendering endpoint. |
+| `main.py` | Backwards-compatible entry point: builds the app via `create_app` for `python main.py` / `gunicorn main:app`. |
+| `src/autocv/llm_client.py` | Central LLM provider, model, timeout, and API-key configuration. |
+| `src/autocv/parser.py` | Rule-based job description parsing and skill extraction. |
+| `src/autocv/matcher.py` | CV/job match analysis and optimization orchestration. |
+| `src/autocv/section_rewriter.py` | Section-level LLM rewrite and optional addition proposals. |
+| `src/autocv/interview_agent.py` | Interview question generation and answer/code review. |
+| `src/autocv/smart_cv_generator.py` | Standalone smart CV generation path and legacy test-script workflow. |
+| `src/autocv/latex_gen.py` | Sample CV and LaTeX generation helpers. |
 | `templates/index.html` | Main optimizer page. |
 | `templates/interview.html` | Interview preparation page. |
 | `static/script.js` | Optimizer page browser logic. |
@@ -66,7 +67,7 @@ questions from the same CV and job context.
   manually, usually for missing projects, skills, summaries, or certifications.
 - **Fallback mode**: Rule-based behavior used when the LLM is unavailable or its
   output fails validation.
-- **LLM provider**: Selected by `SOURCE_LLM` through `src/llm_client.py`.
+- **LLM provider**: Selected by `SOURCE_LLM` through `src/autocv/llm_client.py`.
   Supported values are `local` and `openrouter`.
 - **Per-task model**: Optional model override for a specific LLM task such as
   analysis, section rewrite, proposal, interview, or smart CV generation.

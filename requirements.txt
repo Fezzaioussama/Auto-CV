@@ -20,6 +20,8 @@ Flask-Limiter==3.8.0      # rate limiting on API / LLM endpoints
 Flask-WTF==1.2.1          # CSRF protection for browser form/JSON requests
 email-validator==2.1.1    # validate registration email addresses
 Flask-Migrate==4.0.7      # Alembic schema migrations (flask db migrate/upgrade)
+psycopg[binary]==3.2.13; python_version < "3.10"   # PostgreSQL driver
+psycopg[binary]==3.3.4; python_version >= "3.10"   # PostgreSQL driver
 redis==5.0.8              # optional: shared rate-limit storage (set RATELIMIT_STORAGE_URI)
 
 # --- PDF / DOCX CV ingestion ---

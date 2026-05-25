@@ -4,19 +4,19 @@
 Auto-CV is an AI-powered system that helps you create tailored CVs based on job descriptions. It uses vLLM to analyze job requirements and generate customized CV content.
 
 ## Prerequisites
-- Python 3.8+
-- pip package manager
+- [uv](https://docs.astral.sh/uv/)
+- Python 3.10+ (uv installs/pins it from `.python-version`)
 
 ## Installation
 
-1. Install dependencies:
+1. Install dependencies (creates `.venv`):
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 2. Download NLTK data (if needed):
-```python
-python -c "import nltk; nltk.download('punkt_tab'); nltk.download('stopwords')"
+```bash
+uv run python -c "import nltk; nltk.download('punkt_tab'); nltk.download('stopwords')"
 ```
 
 ## Quick Test (No Server Required)
@@ -24,7 +24,7 @@ python -c "import nltk; nltk.download('punkt_tab'); nltk.download('stopwords')"
 Run the test script to verify everything works:
 
 ```bash
-python test_vllm_cv.py
+uv run python scripts/test_vllm_cv.py
 ```
 
 This will:
@@ -36,7 +36,7 @@ This will:
 
 1. Start the Flask server:
 ```bash
-python main.py
+uv run python -m autocv
 ```
 
 2. Open your browser to `http://localhost:5000`
@@ -98,20 +98,25 @@ pdflatex output/your_cv.tex
 
 ```
 auto-cv-app/
-├── main.py                 # Flask web application
-├── requirements.txt        # Python dependencies
+├── main.py                     # Backwards-compatible entry point
+├── pyproject.toml              # Packaging + tooling config
+├── requirements.txt            # Python dependencies
 ├── src/
-│   ├── __init__.py
-│   ├── smart_cv_generator.py   # Core AI generation logic
-│   ├── parser.py              # Job description parser
-│   ├── matcher.py             # CV matching
-│   ├── latex_gen.py           # LaTeX generation
-│   └── utils.py               # Utility functions
+│   └── autocv/                 # Application package
+│       ├── __init__.py         # Exposes create_app
+│       ├── app.py              # Flask application factory + routes
+│       ├── smart_cv_generator.py   # Core AI generation logic
+│       ├── parser.py           # Job description parser
+│       ├── matcher.py          # CV matching
+│       ├── latex_gen.py        # LaTeX generation
+│       └── utils.py            # Utility functions
 ├── templates/
 │   ├── index.html             # Web interface
 │   └── template_smart.tex     # CV template
 ├── static/
 │   └── script.js              # Frontend JS
+├── tests/                     # pytest suite (+ fixtures/)
+├── scripts/                   # Standalone smoke/dev scripts
 └── examples/
     └── sample_cv.tex          # Sample CV
 
