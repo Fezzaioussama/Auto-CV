@@ -11,10 +11,16 @@ import os
 import sys
 import traceback
 
+from flask import Flask, Response
+
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 _SRC = os.path.join(_ROOT, "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
+
+# Vercel's Python runtime detector requires a literal top-level WSGI app object.
+# The real Auto-CV app replaces this after imports/configuration succeed.
+app = Flask(__name__)
 
 try:
     from autocv import create_app
@@ -23,10 +29,6 @@ try:
 except Exception as exc:  # noqa: BLE001 - keep Vercel function alive for diagnostics
     traceback.print_exc()
     _startup_error = f"{type(exc).__name__}: {exc}"
-
-    from flask import Flask, Response
-
-    app = Flask(__name__)
 
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")
