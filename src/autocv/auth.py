@@ -319,6 +319,10 @@ def reset_password(token):
         return render_template("reset_password.html", token=token)
 
     user.set_password(password)
+    # A reset must boot any sessions opened with the old password (e.g. an
+    # attacker who knew it): rotate the per-user token so every existing
+    # session/remember cookie for this account stops validating.
+    user.rotate_session_token()
     db.session.commit()  # invalidates the (hash-bound) token — single use
     msg = "Password updated. You can sign in now."
     if _wants_json():

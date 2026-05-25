@@ -182,6 +182,7 @@ def create_app(config_object: type = Config) -> Flask:
     with app.app_context():
         try:
             db.create_all()
+            _ensure_auth_columns(app)
         except Exception:
             if _should_fail_on_db_init(app):
                 raise
@@ -197,6 +198,38 @@ def create_app(config_object: type = Config) -> Flask:
     _register_routes(app)
 
     return app
+
+
+def _ensure_auth_columns(app: Flask) -> None:
+    """Add and backfill ``users.session_token`` on pre-existing databases.
+
+    ``db.create_all()`` only creates missing *tables*, never missing *columns*,
+    so a database created before the session-token feature (the local SQLite
+    file, or an already-deployed Postgres) won't have the column. Add it
+    idempotently and give every existing account a token so session
+    invalidation ("sign out everywhere", reset/change) works for them too.
+    Works on both SQLite and Postgres; safe to run on every boot.
+    """
+    import secrets
+
+    from sqlalchemy import inspect, text
+
+    from .models import User
+
+    inspector = inspect(db.engine)
+    if "users" not in inspector.get_table_names():
+        return
+    columns = {col["name"] for col in inspector.get_columns("users")}
+    if "session_token" not in columns:
+        db.session.execute(text("ALTER TABLE users ADD COLUMN session_token VARCHAR(32)"))
+        db.session.commit()
+    missing = User.query.filter(
+        (User.session_token.is_(None)) | (User.session_token == "")
+    ).all()
+    for user in missing:
+        user.session_token = secrets.token_hex(16)
+    if missing:
+        db.session.commit()
 
 
 def _should_fail_on_db_init(app: Flask) -> bool:

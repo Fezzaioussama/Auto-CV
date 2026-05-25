@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app
-from flask_login import login_required, logout_user, current_user
+from flask_login import login_required, login_user, logout_user, current_user
 
 try:  # importable both as a bare module (main.py) and as the src package
     from extensions import db, limiter
@@ -59,8 +59,25 @@ def change_password():
         return jsonify({"error": f"New password must be at least {MIN_PASSWORD_LENGTH} characters."}), 400
 
     current_user.set_password(new)
+    # Changing the password signs out every *other* session/device. Rotate the
+    # token, then re-issue the current session with the new token so the user
+    # who just changed their password stays logged in here.
+    current_user.rotate_session_token()
     db.session.commit()
-    return jsonify({"success": True, "message": "Password updated."})
+    login_user(current_user, remember=True)
+    return jsonify({"success": True, "message": "Password updated. Other devices have been signed out."})
+
+
+@account_bp.route("/api/account/logout-others", methods=["POST"])
+@login_required
+@limiter.limit(_auth_limit)
+def logout_others():
+    """Sign out of every other session/device, keeping the current one."""
+    current_user.rotate_session_token()
+    db.session.commit()
+    # Re-issue this session with the fresh token so the caller stays logged in.
+    login_user(current_user, remember=True)
+    return jsonify({"success": True, "message": "Signed out of all other devices."})
 
 
 @account_bp.route("/api/account/email", methods=["POST"])
