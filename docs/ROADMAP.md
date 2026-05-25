@@ -8,16 +8,16 @@ the bottom for what to ship first.
 
 The following are now shipped (✅) or partially shipped (🟡):
 
-- ✅ **Accounts + login** — email/password auth, per-user data isolation (`src/auth.py`, `src/models.py`).
-- ✅ **Public-web hardening** — debug off by default, sanitized errors, security headers, CSRF, rate limiting, upload size cap (`src/config.py`, `main.py`).
-- ✅ **PDF/DOCX upload** — extracted and converted to LaTeX (`src/file_extract.py`, `/api/extract-cv`).
-- ✅ **Non-tech skill extraction** — LLM-based, any profession, with curated fallback (`src/parser.py`).
-- ✅ **ATS score breakdown** — matched/missing keywords, requirement coverage, weak sections, priority fixes (`src/matcher.py`).
-- ✅ **Cover letter + outreach** — cover letter, recruiter, LinkedIn, email (`src/cover_letter.py`, `/api/cover-letter`).
-- ✅ **Template selector** — ATS-simple / modern / compact / academic (`src/cv_templates.py`).
+- ✅ **Accounts + login** — email/password auth, per-user data isolation (`src/autocv/auth.py`, `src/autocv/models.py`).
+- ✅ **Public-web hardening** — debug off by default, sanitized errors, security headers, CSRF, rate limiting, upload size cap (`src/autocv/config.py`, `main.py`).
+- ✅ **PDF/DOCX upload** — extracted and converted to LaTeX (`src/autocv/file_extract.py`, `/api/extract-cv`).
+- ✅ **Non-tech skill extraction** — LLM-based, any profession, with curated fallback (`src/autocv/parser.py`).
+- ✅ **ATS score breakdown** — matched/missing keywords, requirement coverage, weak sections, priority fixes (`src/autocv/matcher.py`).
+- ✅ **Cover letter + outreach** — cover letter, recruiter, LinkedIn, email (`src/autocv/cover_letter.py`, `/api/cover-letter`).
+- ✅ **Template selector** — ATS-simple / modern / compact / academic (`src/autocv/cv_templates.py`).
 - ✅ **Multilingual output** — EN/FR/ES through rewrite + proposals + cover letter.
 - ✅ **Before/after diff** — section-by-section accept / reject / edit (`static/review.js`).
-- ✅ **Workspace + version history** — saved jobs and CV versions, restore/compare (`src/workspace.py`, `/workspace`).
+- ✅ **Workspace + version history** — saved jobs and CV versions, restore/compare (`src/autocv/workspace.py`, `/workspace`).
 - 🟡 **Interactive section editor** — per-section editing is available within the review/diff panel; a standalone field-by-field editor for *all* sections is still open.
 
 See `docs/DEVELOPMENT.md` → "Web App: Accounts, Database & Security" for setup.

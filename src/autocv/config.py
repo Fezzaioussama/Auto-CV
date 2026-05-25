@@ -27,11 +27,24 @@ except ImportError:  # pragma: no cover - defensive only
     def load_dotenv(*_args, **_kwargs):  # type: ignore
         return False
 
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# This file lives at <repo>/src/autocv/config.py, so the project root is three
+# directories up (autocv -> src -> repo root).
+_PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 load_dotenv(os.path.join(_PROJECT_ROOT, ".env"))
 
 # Where SQLite lives by default and where uploads are briefly written.
-_INSTANCE_DIR = os.path.join(_PROJECT_ROOT, "instance")
+def _default_instance_dir() -> str:
+    explicit = os.environ.get("INSTANCE_DIR", "").strip()
+    if explicit:
+        return explicit
+    if os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"):
+        return os.path.join("/tmp", "autocv-instance")
+    return os.path.join(_PROJECT_ROOT, "instance")
+
+
+_INSTANCE_DIR = _default_instance_dir()
 
 
 def _bool(name: str, default: bool) -> bool:

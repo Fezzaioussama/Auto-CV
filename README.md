@@ -43,19 +43,27 @@ same CV and job context.
 
 ```text
 auto-cv-app/
-├── main.py                  # Flask application and route definitions
-├── Makefile                 # Local run/stop/check helpers
-├── requirements.txt         # Python dependencies
+├── main.py                   # Backwards-compatible entry point (builds the app via create_app)
+├── pyproject.toml            # Packaging, dependencies, and tooling config
+├── uv.lock                   # Resolved dependency lockfile (uv — authoritative)
+├── .python-version           # Python version pin used by uv
+├── requirements.txt          # pip fallback (uv.lock is authoritative)
+├── Makefile                  # Local run/stop/check/test helpers
 ├── src/
-│   ├── llm_client.py         # Central LLM provider configuration
-│   ├── parser.py             # Job description parsing
-│   ├── matcher.py            # CV/job matching and optimization orchestration
-│   ├── section_rewriter.py   # Section-level LLM rewrite logic
-│   ├── interview_agent.py    # Interview generation and answer review
-│   ├── workspace.py          # Saved jobs and CV version history
-│   └── latex_gen.py          # LaTeX helpers and sample CV generation
-├── templates/                # Flask templates
+│   └── autocv/               # Application package
+│       ├── app.py            # Flask application factory (create_app) + routes
+│       ├── __main__.py       # `python -m autocv` entry point
+│       ├── llm_client.py     # Central LLM provider configuration
+│       ├── parser.py         # Job description parsing
+│       ├── matcher.py        # CV/job matching and optimization orchestration
+│       ├── section_rewriter.py  # Section-level LLM rewrite logic
+│       ├── interview_agent.py   # Interview generation and answer review
+│       ├── workspace.py      # Saved jobs and CV version history
+│       └── latex_gen.py      # LaTeX helpers and sample CV generation
+├── templates/                # Flask HTML + LaTeX templates
 ├── static/                   # Frontend JavaScript, CSS, and assets
+├── tests/                    # pytest suite (+ fixtures/)
+├── scripts/                  # Standalone smoke/dev scripts
 ├── docs/                     # Developer documentation
 ├── examples/                 # Example CV/job material
 ├── output/                   # Generated output placeholder
@@ -64,34 +72,27 @@ auto-cv-app/
 
 ## Requirements
 
-- Python 3.10+ recommended
-- `pip`
+- [uv](https://docs.astral.sh/uv/) (manages the Python version and dependencies)
+- Python 3.10+ (uv installs/pins it from `.python-version`)
 - A LaTeX distribution with `pdflatex` for PDF rendering
 - Optional: Tesseract OCR for image/scanned CV extraction
 - Optional: a local OpenAI-compatible LLM server, or an OpenRouter API key
 
 ## Quick Start
 
-1. Create and activate a virtual environment:
+1. Install dependencies (creates `.venv` and installs the project + dev tools):
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
+uv sync          # or: make install
 ```
 
-2. Install dependencies:
-
-```bash
-make install
-```
-
-3. Create your local environment file:
+2. Create your local environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-4. Edit `.env` for your LLM provider.
+3. Edit `.env` for your LLM provider.
 
 For a local OpenAI-compatible server:
 
@@ -109,10 +110,10 @@ OPENROUTER_API_KEY=your-api-key
 OPENROUTER_MODEL=openai/gpt-4o-mini
 ```
 
-5. Run the app:
+4. Run the app:
 
 ```bash
-make start
+make start          # or: uv run python -m autocv
 ```
 
 Open:
@@ -146,6 +147,37 @@ The default port is `5000`. You can override it for Makefile-managed commands:
 make start PORT=5001
 make stop PORT=5001
 ```
+
+### Running with uv
+
+The app is packaged (`pyproject.toml`) as the `autocv` package under `src/`.
+`uv sync` installs it (editable) into `.venv`, so the standard entry points work
+through `uv run`:
+
+```bash
+uv sync                              # create/refresh .venv from pyproject + uv.lock
+uv run flask --app autocv run        # dev server (add --debug for auto-reload)
+uv run python -m autocv              # dev server
+uv run auto-cv                       # console script (same as python -m autocv)
+```
+
+For a production WSGI server, install the `prod` extra (adds gunicorn):
+
+```bash
+uv sync --extra prod
+uv run gunicorn "autocv:create_app()"
+```
+
+Common dependency tasks:
+
+```bash
+uv add <package>                     # add a runtime dependency (updates pyproject + uv.lock)
+uv add --dev <package>               # add a dev/test dependency
+uv lock --upgrade                    # re-resolve to the latest allowed versions
+```
+
+`python main.py` and `gunicorn main:app` still work if you prefer a plain
+virtualenv without uv.
 
 ## Main Workflows
 
@@ -214,8 +246,14 @@ make check
 This currently runs:
 
 ```bash
-python -m compileall main.py src
+uv run python -m compileall main.py src scripts
 node --check static/interview.js
+```
+
+Run the automated test suite with:
+
+```bash
+make test   # or: uv run pytest
 ```
 
 For manual verification:
@@ -232,11 +270,14 @@ For manual verification:
 
 Developer documentation lives in [docs/](docs/):
 
+- [Quick Start](docs/QUICKSTART.md)
+- [Installation Guide](docs/INSTALLATION.md)
 - [Development Guide](docs/DEVELOPMENT.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [API Reference](docs/API_REFERENCE.md)
 - [Frontend Guide](docs/FRONTEND.md)
 - [Maintenance Guide](docs/MAINTENANCE.md)
+- [Product Roadmap](docs/ROADMAP.md)
 
 ## Deployment Notes
 

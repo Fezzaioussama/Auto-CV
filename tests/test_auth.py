@@ -35,8 +35,8 @@ def test_password_reset_is_single_use(client, app):
     register(client, "dave@example.com", "originalpass")
     client.get("/logout")
     with app.app_context():
-        from models import User
-        from tokens import make_token, PURPOSE_RESET
+        from autocv.models import User
+        from autocv.tokens import make_token, PURPOSE_RESET
         u = User.query.filter_by(email="dave@example.com").first()
         token = make_token(PURPOSE_RESET, {"uid": u.id, "h": u.password_hash[-20:]})
 
@@ -63,11 +63,11 @@ def test_forgot_password_no_account_enumeration(client):
 def test_verify_email(client, app):
     register(client, "erin@example.com")
     with app.app_context():
-        from models import User
-        from tokens import make_token, PURPOSE_VERIFY
+        from autocv.models import User
+        from autocv.tokens import make_token, PURPOSE_VERIFY
         u = User.query.filter_by(email="erin@example.com").first()
         token = make_token(PURPOSE_VERIFY, u.id)
     client.get(f"/verify-email/{token}")
     with app.app_context():
-        from models import User
+        from autocv.models import User
         assert User.query.filter_by(email="erin@example.com").first().email_verified is True

@@ -6,10 +6,11 @@ Test script to verify vLLM API connection and CV generation.
 import sys
 import os
 
-# Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+# This script lives in <repo>/scripts/, so the repo root is one directory up.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(_REPO_ROOT, "src"))
 
-from smart_cv_generator import SmartCVGenerator, generate_smart_cv
+from autocv.smart_cv_generator import SmartCVGenerator, generate_smart_cv
 
 
 def test_vllm_connection():
@@ -101,7 +102,7 @@ def test_full_cv_generation():
     print(f"Generated CV content ({len(cv_content)} characters)")
     
     # Save to file
-    output_dir = os.path.join(os.path.dirname(__file__), 'output')
+    output_dir = os.path.join(_REPO_ROOT, 'output')
     tex_path = generator.save_cv(cv_content, 'vllm_test_cv.tex', output_dir)
     
     print(f"Saved LaTeX to: {tex_path}")

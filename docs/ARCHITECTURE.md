@@ -2,7 +2,7 @@
 
 Auto-CV has four main layers:
 
-1. Flask routes in `main.py`.
+1. Flask routes in `src/autocv/app.py`.
 2. Domain logic in `src/`.
 3. Jinja templates in `templates/`.
 4. Browser logic and styling in `static/`.
@@ -14,9 +14,9 @@ rewrites and PDF compilation.
 
 ```text
 Browser
-  -> Flask route in main.py
+  -> Flask route in src/autocv/app.py
     -> parser/matcher/rewriter/interview module
-      -> src/llm_client.py
+      -> src/autocv/llm_client.py
         -> optional local/OpenRouter chat completion API
       -> optional pdflatex process
     -> JSON or PDF response
@@ -29,16 +29,16 @@ The main optimizer lives at `/`.
 
 1. User pastes or drops a job description.
 2. Browser calls `POST /api/parse-job`.
-3. `main.py` calls `parse_job_description` from `src/parser.py`.
+3. `src/autocv/app.py` calls `parse_job_description` from `src/autocv/parser.py`.
 4. Browser displays extracted skills, requirements, and qualifications.
 5. User pastes or drops a LaTeX CV.
 6. Browser calls `POST /api/optimize-cv`.
-7. `main.py` calls `optimize_cv_for_job` from `src/matcher.py`.
+7. `src/autocv/app.py` calls `optimize_cv_for_job` from `src/autocv/matcher.py`.
 8. `matcher.py` analyzes the CV/job match.
 9. `matcher.py` starts these in parallel:
    - general modifications from `CVMatcher.generate_cv_modifications`
-   - section rewrites from `src/section_rewriter.py`
-   - optional proposal snippets from `src/section_rewriter.py`
+   - section rewrites from `src/autocv/section_rewriter.py`
+   - optional proposal snippets from `src/autocv/section_rewriter.py`
 10. Browser receives analysis, optimized LaTeX, rewritten section titles, and
     proposed additions.
 11. Browser displays score, coverage, recommendations, editable LaTeX, and PDF
@@ -54,17 +54,17 @@ The interview feature lives at `/interview`.
 2. `/interview` pre-fills those values when available.
 3. User chooses level, domains, count, and optional instructions.
 4. Browser calls `POST /api/interview/questions`.
-5. `src/interview_agent.py` generates structured questions with the LLM.
+5. `src/autocv/interview_agent.py` generates structured questions with the LLM.
 6. If generation fails, deterministic fallback questions are returned with
    `fallback: true`.
 7. User answers a question.
 8. Browser calls `POST /api/interview/review`.
-9. `src/interview_agent.py` returns a score, strengths, improvements,
+9. `src/autocv/interview_agent.py` returns a score, strengths, improvements,
    follow-up questions, and coding complexity when relevant.
 
 ## Backend Module Responsibilities
 
-### `main.py`
+### `src/autocv/app.py`
 
 - Creates the Flask app.
 - Defines HTML and API routes.
@@ -73,7 +73,7 @@ The interview feature lives at `/interview`.
 - Normalizes some LaTeX dependencies before compilation.
 - Imports `llm_client`, which loads `.env`, and exposes `/api/llm/health`.
 
-### `src/llm_client.py`
+### `src/autocv/llm_client.py`
 
 - Loads `.env` from the project root.
 - Selects the LLM provider with `SOURCE_LLM`.
@@ -85,14 +85,14 @@ The interview feature lives at `/interview`.
 - Returns `None` on LLM failures so feature modules can use their existing
   fallbacks.
 
-### `src/parser.py`
+### `src/autocv/parser.py`
 
 - Cleans job description text.
 - Extracts skills using a curated common-skill set.
 - Extracts requirements and qualifications with rule-based patterns.
 - Extracts light company/location information.
 
-### `src/matcher.py`
+### `src/autocv/matcher.py`
 
 - Canonicalizes and matches skills.
 - Calls the LLM client for CV/job analysis.
@@ -100,7 +100,7 @@ The interview feature lives at `/interview`.
 - Normalizes analysis output into the response shape expected by the frontend.
 - Orchestrates CV optimization, section rewrite, and proposals.
 
-### `src/section_rewriter.py`
+### `src/autocv/section_rewriter.py`
 
 - Splits a LaTeX document into `\section{...}` blocks.
 - Classifies sections such as summary, skills, experience, projects, education,
@@ -110,7 +110,7 @@ The interview feature lives at `/interview`.
   unclaimed missing skills.
 - Proposes optional new section snippets.
 
-### `src/interview_agent.py`
+### `src/autocv/interview_agent.py`
 
 - Converts LaTeX CV content into plain text for prompting.
 - Normalizes job descriptions.
@@ -118,7 +118,7 @@ The interview feature lives at `/interview`.
 - Reviews written or coding answers.
 - Falls back to deterministic offline questions/reviews when the LLM fails.
 
-### `src/smart_cv_generator.py`
+### `src/autocv/smart_cv_generator.py`
 
 - Provides the standalone smart CV generation API used by the legacy scripts.
 - Uses `llm_client.Task.SMART_CV` for LLM-backed job analysis and CV content
@@ -126,7 +126,7 @@ The interview feature lives at `/interview`.
 - Still accepts explicit `api_url` and `model` constructor overrides for older
   scripts, while defaulting to environment-resolved provider configuration.
 
-### `src/latex_gen.py`
+### `src/autocv/latex_gen.py`
 
 - Builds sample CV data.
 - Contains helpers for creating LaTeX content.
@@ -182,7 +182,7 @@ Owns the interview page behavior:
 
 ## LLM Integration
 
-All LLM calls use `src/llm_client.py`. The rest of the app should not call
+All LLM calls use `src/autocv/llm_client.py`. The rest of the app should not call
 `requests.post(.../chat/completions)` directly.
 
 The client supports two providers:

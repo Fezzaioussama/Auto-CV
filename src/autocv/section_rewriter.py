@@ -237,7 +237,10 @@ def _introduces_unclaimed_skill(
     if not missing_skills:
         return False
     try:
-        from matcher import _text_contains_skill
+        try:
+            from matcher import _text_contains_skill
+        except ImportError:
+            from .matcher import _text_contains_skill
     except Exception:  # noqa: BLE001 - guardrail must never crash the rewrite
         return False
 

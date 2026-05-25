@@ -62,8 +62,12 @@ class SmartCVGenerator:
             model: Model name to use (default: Qwen/Qwen3-Coder-Next-FP8)
         """
         if template_path is None:
-            # Try to find the template in the project
-            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            # Try to find the template in the project. This file lives at
+            # <repo>/src/autocv/smart_cv_generator.py, so the project root is
+            # three directories up (autocv -> src -> repo root).
+            project_root = os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            )
             template_path = os.path.join(project_root, 'templates', 'template_smart.tex')
         
         self.template_path = template_path
@@ -120,7 +124,7 @@ class SmartCVGenerator:
             JobAnalysis object with LLM-powered insights
         """
         # First, get basic analysis from parser
-        from src.parser import JobDescriptionParser
+        from .parser import JobDescriptionParser
         parser = JobDescriptionParser()
         parsed = parser.parse(job_text)
         
@@ -259,7 +263,7 @@ Please analyze and provide your response in the following JSON format:
         
         # If LLM analysis fails, fall back to parser
         if not analysis.llm_analysis:
-            from src.parser import JobDescriptionParser
+            from .parser import JobDescriptionParser
             parser = JobDescriptionParser()
             parsed = parser.parse(job_text)
             

@@ -7,10 +7,11 @@ Tests the basic functionality of the smart CV system.
 import os
 import sys
 
-# Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+# This script lives in <repo>/scripts/, so the repo root is one directory up.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(_REPO_ROOT, "src"))
 
-from smart_cv_generator import SmartCVGenerator, generate_smart_cv
+from autocv.smart_cv_generator import SmartCVGenerator, generate_smart_cv
 
 
 def test_job_analysis():
@@ -176,7 +177,7 @@ def test_file_operations():
     cv_content = generator.generate_customized_cv(analysis)
     
     # Save CV
-    output_dir = os.path.join(os.path.dirname(__file__), 'output')
+    output_dir = os.path.join(_REPO_ROOT, 'output')
     tex_path = generator.save_cv(cv_content, 'test_cv.tex', output_dir)
     
     print(f"\nSaved CV to: {tex_path}")
@@ -224,7 +225,7 @@ def test_convenience_function():
         pdf_path = generate_smart_cv(
             job_description=sample_job,
             cv_skills=cv_skills,
-            output_dir='output'
+            output_dir=os.path.join(_REPO_ROOT, 'output')
         )
         
         print(f"Generated PDF at: {pdf_path}")

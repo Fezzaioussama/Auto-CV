@@ -8,42 +8,42 @@ Auto-CV is a web application that helps users optimize their LaTeX CVs based on 
 
 ```
 auto-cv-app/
-├── src/                      # Python source modules
-│   ├── __init__.py          # Package initialization
-│   ├── parser.py            # Job description parser (extracts skills, requirements)
-│   ├── matcher.py           # CV matching engine (analyzes match score)
-│   └── latex_gen.py         # LaTeX renderer (generates PDF-ready LaTeX)
-├── templates/                # HTML templates
-│   └── index.html           # Main web interface
-├── static/                   # Static assets
-│   ├── style.css            # CSS styling
-│   └── script.js            # JavaScript for frontend logic
-├── docs/                     # Documentation
-│   └── INSTALLATION.md      # Detailed installation guide
-├── examples/                 # Example files
-│   └── sample_cv.tex        # Sample LaTeX CV
-├── main.py                   # Flask application entry point
-├── requirements.txt          # Python dependencies
-├── README.md                 # Project overview
-└── QUICKSTART.md            # Quick start guide
+├── src/
+│   └── autocv/              # Application package
+│       ├── __init__.py      # Package init (exposes create_app)
+│       ├── app.py           # Flask application factory + routes
+│       ├── parser.py        # Job description parser
+│       ├── matcher.py       # CV matching engine
+│       ├── latex_gen.py     # LaTeX renderer
+│       └── ...              # auth, workspace, interview_agent, llm_client, etc.
+├── templates/               # HTML + LaTeX templates
+├── static/                  # CSS, JavaScript, and assets
+├── tests/                   # pytest suite (+ fixtures/)
+├── scripts/                 # Standalone smoke/dev scripts
+├── docs/                    # Documentation
+├── examples/                # Example files (sample_cv.tex)
+├── main.py                  # Backwards-compatible entry point
+├── pyproject.toml           # Packaging + tooling config
+├── requirements.txt         # Python dependencies
+└── README.md                # Project overview
 ```
 
 ## Core Features
 
-### 1. Job Description Parser (`src/parser.py`)
+### 1. Job Description Parser (`src/autocv/parser.py`)
 - Extracts skills from job descriptions
 - Identifies requirements and qualifications
 - Detects company information
 - Uses NLTK for natural language processing
 
-### 2. CV Matching Engine (`src/matcher.py`)
+### 2. CV Matching Engine (`src/autocv/matcher.py`)
 - Parses LaTeX CVs into structured sections
 - Matches CV skills with job requirements
 - Calculates match score
 - Identifies gaps and missing requirements
 - Generates optimization recommendations
 
-### 3. LaTeX Renderer (`src/latex_gen.py`)
+### 3. LaTeX Renderer (`src/autocv/latex_gen.py`)
 - Generates professional LaTeX CV documents
 - Supports multiple sections (summary, experience, education, skills, projects)
 - Creates categorized skills sections
@@ -79,18 +79,18 @@ auto-cv-app/
 ### Prerequisites
 - Python 3.8 or higher
 - LaTeX distribution (MiKTeX, MacTeX, or TeX Live)
-- pip (Python package manager)
+- uv (https://docs.astral.sh/uv/)
 
 ### Steps
 ```bash
 # Install Python dependencies
-pip install -r requirements.txt
+uv sync
 
 # Download NLTK data
-python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('stopwords')"
+uv run python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('stopwords')"
 
 # Run the application
-python main.py
+uv run python -m autocv
 ```
 
 ## Usage Flow
@@ -125,7 +125,7 @@ python main.py
 ### Start the Server
 ```bash
 cd auto-cv-app
-python main.py
+uv run python -m autocv
 ```
 
 ### Test URLs
@@ -166,7 +166,7 @@ Senior Software Engineer, Tech Company, Inc.\hfill 2020 - Present
 ### Common Issues
 1. **pdflatex not found** - Install LaTeX distribution
 2. **NLTK errors** - Run `nltk.download()` commands
-3. **Port already in use** - Use `python main.py --port 5001`
+3. **Port already in use** - Use `PORT=5001 uv run python -m autocv`
 
 See `docs/INSTALLATION.md` for detailed troubleshooting.
 
@@ -174,26 +174,27 @@ See `docs/INSTALLATION.md` for detailed troubleshooting.
 
 | File | Purpose |
 |------|---------|
-| `main.py` | Flask application with all API endpoints |
-| `src/parser.py` | Job description parsing logic |
-| `src/matcher.py` | CV matching and analysis engine |
-| `src/latex_gen.py` | LaTeX generation and PDF compilation |
-| `src/__init__.py` | Package initialization |
+| `src/autocv/app.py` | Flask application factory (`create_app`) with all API endpoints |
+| `main.py` | Backwards-compatible entry point that builds the app |
+| `src/autocv/parser.py` | Job description parsing logic |
+| `src/autocv/matcher.py` | CV matching and analysis engine |
+| `src/autocv/latex_gen.py` | LaTeX generation and PDF compilation |
+| `src/autocv/__init__.py` | Package initialization (exposes `create_app`) |
 | `templates/index.html` | Main web interface |
 | `static/style.css` | CSS styling |
 | `static/script.js` | JavaScript frontend logic |
 | `requirements.txt` | Python dependencies |
 | `README.md` | Project documentation |
-| `QUICKSTART.md` | Quick start guide |
+| `docs/QUICKSTART.md` | Quick start guide |
 | `docs/INSTALLATION.md` | Installation guide |
 | `examples/sample_cv.tex` | Sample LaTeX CV |
 
 ## Next Steps for Users
 
-1. Install required packages (`pip install -r requirements.txt`)
+1. Install required packages (`uv sync`)
 2. Install LaTeX distribution
 3. Download NLTK data
-4. Run `python main.py`
+4. Run `uv run python -m autocv`
 5. Open http://localhost:5000 in browser
 6. Upload job description and CV
 7. Optimize and download

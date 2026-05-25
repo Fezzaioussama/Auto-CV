@@ -44,9 +44,12 @@ except ImportError:  # pragma: no cover - defensive only
 # .env loading
 # ---------------------------------------------------------------------------
 
-# Load the project-root .env once, on import, before any config is read. The
-# project root is the parent of this file's directory (auto-cv-app/).
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Load the project-root .env once, on import, before any config is read. This
+# file lives at <repo>/src/autocv/llm_client.py, so the project root is three
+# directories up (autocv -> src -> repo root).
+_PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 load_dotenv(os.path.join(_PROJECT_ROOT, ".env"))
 
 

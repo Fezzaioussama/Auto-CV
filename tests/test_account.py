@@ -36,7 +36,7 @@ def test_delete_account_removes_data(client, app):
     assert client.post("/api/account/delete", json={"password": "WRONG"}).status_code == 403
     assert client.post("/api/account/delete", json={"password": "deletepass1"}).status_code == 200
     with app.app_context():
-        from models import User, Job
+        from autocv.models import User, Job
         assert User.query.filter_by(email="del@example.com").first() is None
         assert Job.query.count() == 0  # cascade removed the job too
 
