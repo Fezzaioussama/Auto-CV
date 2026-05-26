@@ -76,7 +76,7 @@ pdf_path = generate_smart_cv(
 
 ## vLLM Configuration
 
-The system uses vLLM at `http://127.0.0.1:8002/v1` with model `Qwen/Qwen3-Coder-Next-FP8`.
+The system uses vLLM at `http://127.0.0.1:8002/v1` with model `qwen/qwen3.6-plus`.
 
 To change the API settings, set environment variables:
 

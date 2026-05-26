@@ -52,11 +52,26 @@ def test_openrouter_key_selects_openrouter_when_source_is_unset(monkeypatch):
     assert llm.active_source() == "openrouter"
 
 
-def test_openrouter_default_model_is_gpt_oss_120b(monkeypatch):
+def test_openrouter_default_model_is_qwen36_plus(monkeypatch):
     monkeypatch.setenv("SOURCE_LLM", "openrouter")
     monkeypatch.delenv("OPENROUTER_MODEL", raising=False)
 
-    assert llm.resolve_model(llm.Task.DEFAULT) == "openai/gpt-oss-120b"
+    assert llm.resolve_model(llm.Task.DEFAULT) == "qwen/qwen3.6-plus"
+
+
+def test_openrouter_ocr_default_is_vision_capable(monkeypatch):
+    monkeypatch.setenv("SOURCE_LLM", "openrouter")
+    monkeypatch.setenv("OPENROUTER_MODEL", "qwen/qwen3.6-plus")
+    monkeypatch.delenv("OPENROUTER_MODEL_OCR", raising=False)
+
+    assert llm.resolve_model(llm.Task.OCR) == "google/gemini-3.1-flash-lite"
+
+
+def test_openrouter_ocr_model_override_wins(monkeypatch):
+    monkeypatch.setenv("SOURCE_LLM", "openrouter")
+    monkeypatch.setenv("OPENROUTER_MODEL_OCR", "custom/vision-model")
+
+    assert llm.resolve_model(llm.Task.OCR) == "custom/vision-model"
 
 
 def test_explicit_source_still_wins_over_openrouter_key(monkeypatch):

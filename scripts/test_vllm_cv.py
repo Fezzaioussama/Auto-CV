@@ -21,7 +21,7 @@ def test_vllm_connection():
     
     # Create generator with vLLM config
     api_url = "http://127.0.0.1:8002/v1"
-    model = "Qwen/Qwen3-Coder-Next-FP8"
+    model = "qwen/qwen3.6-plus"
     
     generator = SmartCVGenerator(api_url=api_url, model=model)
     
@@ -81,7 +81,7 @@ def test_full_cv_generation():
     # Create generator with vLLM
     generator = SmartCVGenerator(
         api_url="http://127.0.0.1:8002/v1",
-        model="Qwen/Qwen3-Coder-Next-FP8"
+        model="qwen/qwen3.6-plus"
     )
     
     print("\nAnalyzing job description...")

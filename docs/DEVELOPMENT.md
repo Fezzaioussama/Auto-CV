@@ -70,7 +70,7 @@ or:
 # OpenRouter serverless API
 SOURCE_LLM=openrouter
 OPENROUTER_API_KEY=your-key
-OPENROUTER_MODEL=openai/gpt-oss-120b
+OPENROUTER_MODEL=qwen/qwen3.6-plus
 ```
 
 Important environment variables:
@@ -83,10 +83,13 @@ Important environment variables:
 | `LOCAL_LLM_API_KEY` | `src/autocv/llm_client.py` | Optional local bearer token. |
 | `OPENROUTER_API_KEY` | `src/autocv/llm_client.py` | Required when `SOURCE_LLM=openrouter`. |
 | `OPENROUTER_MODEL` | `src/autocv/llm_client.py` | Default OpenRouter model. |
+| `OPENROUTER_MODEL_OCR` | `src/autocv/llm_client.py` | Vision-capable OpenRouter model for scanned/image OCR. |
 | `OPENROUTER_BASE_URL` | `src/autocv/llm_client.py` | OpenRouter API base URL. Rarely changed. |
 | `LLM_CONNECT_TIMEOUT` | `src/autocv/llm_client.py` | Connection timeout in seconds. |
 | `LLM_TIMEOUT` | `src/autocv/llm_client.py` | Read timeout in seconds. |
 | `LLM_MAX_WORKERS` | `section_rewriter.py` through `llm_client.py` | Max parallel section rewrite calls. |
+| `LATEX_REPAIR_ATTEMPTS` | `src/autocv/latex_repair.py` | Max render-error correction iterations. |
+| `LATEX_REPAIR_MAX_TOKENS` | `src/autocv/latex_repair.py` | Response-token budget for each render repair request. |
 
 Per-task model overrides:
 
@@ -102,6 +105,7 @@ OPENROUTER_MODEL_SECTION_REWRITE=
 OPENROUTER_MODEL_PROPOSAL=
 OPENROUTER_MODEL_INTERVIEW=
 OPENROUTER_MODEL_SMART_CV=
+OPENROUTER_MODEL_OCR=google/gemini-3.1-flash-lite
 ```
 
 Legacy variables such as `VLLM_API_URL`, `VLLM_MODEL`,
