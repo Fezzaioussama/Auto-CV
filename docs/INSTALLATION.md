@@ -75,7 +75,8 @@ For OpenRouter, set:
 ```text
 SOURCE_LLM=openrouter
 OPENROUTER_API_KEY=your-key
-OPENROUTER_MODEL=openai/gpt-oss-120b
+OPENROUTER_MODEL=qwen/qwen3.6-plus
+OPENROUTER_MODEL_OCR=google/gemini-3.1-flash-lite
 ```
 
 The app still has legacy local defaults, so it can start without `.env`, but

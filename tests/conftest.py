@@ -21,6 +21,8 @@ os.environ["RATELIMIT_ENABLED"] = "false"    # don't trip limits during tests
 os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["SMTP_HOST"] = ""                 # dev log-only email (no network)
 os.environ["REQUIRE_EMAIL_VERIFICATION"] = "false"
+os.environ["LATEX_REPAIR_ATTEMPTS"] = "5"
+os.environ["LATEX_REPAIR_MAX_TOKENS"] = "8000"
 # Force LLM calls onto the fast no-op path (keyless OpenRouter returns None
 # immediately) so tests exercise the rule-based fallbacks without any network.
 os.environ["SOURCE_LLM"] = "openrouter"

@@ -33,7 +33,9 @@ except ImportError:  # pragma: no cover
 
 
 # How many LLM repair attempts before giving up (configurable via env).
-DEFAULT_REPAIR_ATTEMPTS = max(0, int(os.environ.get("LATEX_REPAIR_ATTEMPTS", "2")))
+DEFAULT_REPAIR_ATTEMPTS = max(0, int(os.environ.get("LATEX_REPAIR_ATTEMPTS", "5")))
+# Response-token budget for each LLM repair request.
+DEFAULT_REPAIR_MAX_TOKENS = max(1, int(os.environ.get("LATEX_REPAIR_MAX_TOKENS", "8000")))
 # pdflatex wall-clock budget per compile (seconds). nonstopmode prevents hangs.
 COMPILE_TIMEOUT = float(os.environ.get("LATEX_COMPILE_TIMEOUT", "120"))
 
@@ -352,7 +354,12 @@ REPAIR_SYSTEM_PROMPT = (
 )
 
 
-def repair_latex(latex_content: str, error_log: str) -> Optional[str]:
+def repair_latex(
+    latex_content: str,
+    error_log: str,
+    *,
+    max_tokens: int = DEFAULT_REPAIR_MAX_TOKENS,
+) -> Optional[str]:
     """Ask the LLM to fix a non-compiling document. Returns None on failure."""
     user_prompt = (
         "pdflatex failed to produce a PDF. Relevant error log:\n"
@@ -367,7 +374,7 @@ def repair_latex(latex_content: str, error_log: str) -> Optional[str]:
         system_prompt=REPAIR_SYSTEM_PROMPT,
         task=Task.LATEX_REPAIR,
         temperature=0.1,
-        max_tokens=8000,
+        max_tokens=max_tokens,
         log_prefix="latex-repair",
     )
     if not raw:
@@ -399,6 +406,7 @@ def render_pdf(
     latex_content: str,
     *,
     max_repair_attempts: int = DEFAULT_REPAIR_ATTEMPTS,
+    repair_max_tokens: int = DEFAULT_REPAIR_MAX_TOKENS,
     compile_timeout: float = COMPILE_TIMEOUT,
 ) -> RenderResult:
     """Compile to PDF, auto-repairing compilation errors with the LLM.
@@ -434,7 +442,7 @@ def render_pdf(
                 f"{max_repair_attempts + 1}); asking the LLM to fix it…",
                 flush=True,
             )
-            fixed = repair_latex(current, errors)
+            fixed = repair_latex(current, errors, max_tokens=repair_max_tokens)
             if not fixed or fixed.strip() == current.strip():
                 print("[latex-repair] no usable fix produced; stopping.", flush=True)
                 break

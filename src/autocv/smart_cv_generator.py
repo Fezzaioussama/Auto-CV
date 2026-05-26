@@ -59,7 +59,7 @@ class SmartCVGenerator:
         Args:
             template_path: Path to the smart template file
             api_url: vLLM API URL (default: http://195.154.75.46:8002/v1)
-            model: Model name to use (default: Qwen/Qwen3-Coder-Next-FP8)
+            model: Model name to use (default: qwen/qwen3.6-plus)
         """
         if template_path is None:
             # Try to find the template in the project. This file lives at

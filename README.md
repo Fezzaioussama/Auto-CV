@@ -107,7 +107,7 @@ For OpenRouter:
 ```env
 SOURCE_LLM=openrouter
 OPENROUTER_API_KEY=your-api-key
-OPENROUTER_MODEL=openai/gpt-oss-120b
+OPENROUTER_MODEL=qwen/qwen3.6-plus
 ```
 
 4. Run the app:
@@ -226,10 +226,11 @@ Important settings:
 
 - `SOURCE_LLM`: `local` or `openrouter`
 - `LOCAL_LLM_URL`, `LOCAL_LLM_MODEL`, `LOCAL_LLM_API_KEY`
-- `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`
+- `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_MODEL_OCR`
 - `SECRET_KEY`: required for production
 - `DATABASE_URL`: defaults to SQLite under `instance/`
 - `LATEX_REPAIR_ATTEMPTS`: number of automatic LaTeX repair attempts
+- `LATEX_REPAIR_MAX_TOKENS`: response-token budget per render repair request
 - `MAX_CONTENT_LENGTH_MB`: upload/request size limit
 - `RATELIMIT_*`: rate-limit settings
 

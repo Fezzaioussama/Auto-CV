@@ -90,12 +90,12 @@ class Task:
 # Provider configuration
 # ---------------------------------------------------------------------------
 
-# Legacy defaults preserved so the app behaves exactly as before when no .env
-# is present (the original hard-coded vLLM endpoint and model).
+# Defaults used when no .env model override is present.
 _LEGACY_LOCAL_URL = "http://195.154.75.46:8002/v1"
-_LEGACY_LOCAL_MODEL = "Qwen/Qwen3-Coder-Next-FP8"
+_LEGACY_LOCAL_MODEL = "qwen/qwen3.6-plus"
 _DEFAULT_OPENROUTER_URL = "https://openrouter.ai/api/v1"
-_DEFAULT_OPENROUTER_MODEL = "openai/gpt-oss-120b"
+_DEFAULT_OPENROUTER_MODEL = "qwen/qwen3.6-plus"
+_DEFAULT_OPENROUTER_OCR_MODEL = "google/gemini-3.1-flash-lite"
 
 
 def active_source() -> str:
@@ -143,10 +143,17 @@ def _api_key() -> Optional[str]:
 def resolve_model(task: str = Task.DEFAULT) -> str:
     """Resolve the model name for ``task`` under the active provider.
 
-    Per-task override → provider default → legacy/hard default.
+    Per-task override → provider default → legacy/hard default. OpenRouter OCR
+    is special-cased to a vision-capable default because the text default cannot
+    read image inputs.
     """
     task = (task or Task.DEFAULT).upper()
     if active_source() == "openrouter":
+        if task == Task.OCR:
+            return _env(
+                "OPENROUTER_MODEL_OCR",
+                default=_DEFAULT_OPENROUTER_OCR_MODEL,
+            )
         return _env(
             f"OPENROUTER_MODEL_{task}",
             "OPENROUTER_MODEL",
