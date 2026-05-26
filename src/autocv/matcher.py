@@ -849,10 +849,29 @@ def optimize_cv_for_job(cv_content: str, job_description: Union[str, Dict],
         return matcher.generate_cv_modifications(cv_content, job_text, analysis)
 
     def _do_rewrite():
+        # Primary path: pour the candidate's content into the house template
+        # section by section (parallel, with per-section validate+correct).
+        # Fall back to the in-place section rewrite when the template is
+        # missing/empty or the fill produces no usable sections.
         try:
+            from template_fill import fill_template_cv
             from section_rewriter import rewrite_cv_sections
         except ImportError:
+            from .template_fill import fill_template_cv
             from .section_rewriter import rewrite_cv_sections
+        try:
+            report = fill_template_cv(
+                cv_content, job_description, job_text, analysis, language=language
+            )
+            if report.used_template and report.filled_titles:
+                return report.latex, report.filled_titles, report.section_diffs
+            print(
+                "[optimize-cv] template fill unavailable/empty; "
+                "falling back to in-place section rewrite.",
+                flush=True,
+            )
+        except Exception as exc:  # noqa: BLE001 - never let fill crash optimize
+            print(f"[matcher] template fill failed ({exc}); rewriting in place.", flush=True)
         return rewrite_cv_sections(
             cv_content, job_description, job_text, analysis, language=language
         )
