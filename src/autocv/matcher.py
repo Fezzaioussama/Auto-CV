@@ -743,6 +743,50 @@ def _append_items_to_experience(latex: str, items: List[str]) -> tuple[str, bool
     return latex[:section_match.start()] + updated_section + latex[section_match.end():], True
 
 
+def _enforce_house_design(latex: str, source_cv: str) -> str:
+    """Re-wrap a generated CV in the house template's preamble + postamble.
+
+    Used on the fallback paths (in-place section rewrite, rule-based adapt)
+    so the final document always carries ``template_cv.tex``'s colors and
+    layout, not whatever styling the uploaded CV happened to use. The body
+    sections are kept; only the preamble (color/font/section defs) and the
+    postamble (\\end{document}) are swapped. No-op when the template can't be
+    loaded or when the input has no \\section headers to keep.
+    """
+    if not latex or not latex.strip():
+        return latex
+    try:
+        from template_fill import (
+            extract_personal_info, fill_header, load_template, parse_template,
+        )
+        from section_rewriter import split_latex
+    except ImportError:  # pragma: no cover
+        from .template_fill import (
+            extract_personal_info, fill_header, load_template, parse_template,
+        )
+        from .section_rewriter import split_latex
+
+    template_src = load_template()
+    if not template_src:
+        return latex
+    parsed = parse_template(template_src)
+    if not parsed.preamble:
+        return latex
+    _user_pre, sections, _user_post = split_latex(latex)
+    if not sections:
+        return latex
+
+    info = extract_personal_info(source_cv or latex)
+    preamble = fill_header(parsed.preamble, info)
+    body_parts: List[str] = []
+    for sec in sections:
+        body_parts.append(sec.header)
+        if not sec.body.startswith("\n"):
+            body_parts.append("\n")
+        body_parts.append(sec.body.rstrip() + "\n\n")
+    return preamble.rstrip() + "\n\n" + "".join(body_parts) + parsed.postamble
+
+
 def adapt_uploaded_latex(
     cv_content: str,
     analysis: Dict,
@@ -852,7 +896,9 @@ def optimize_cv_for_job(cv_content: str, job_description: Union[str, Dict],
         # Primary path: pour the candidate's content into the house template
         # section by section (parallel, with per-section validate+correct).
         # Fall back to the in-place section rewrite when the template is
-        # missing/empty or the fill produces no usable sections.
+        # missing/empty or the fill produces no usable sections — and rewrap
+        # that fallback in the house template's preamble so the colored design
+        # always lands, regardless of the uploaded CV's own styling.
         try:
             from template_fill import fill_template_cv
             from section_rewriter import rewrite_cv_sections
@@ -872,9 +918,11 @@ def optimize_cv_for_job(cv_content: str, job_description: Union[str, Dict],
             )
         except Exception as exc:  # noqa: BLE001 - never let fill crash optimize
             print(f"[matcher] template fill failed ({exc}); rewriting in place.", flush=True)
-        return rewrite_cv_sections(
+        rewritten_latex, rewritten_titles, section_diffs = rewrite_cv_sections(
             cv_content, job_description, job_text, analysis, language=language
         )
+        rewritten_latex = _enforce_house_design(rewritten_latex, cv_content)
+        return rewritten_latex, rewritten_titles, section_diffs
 
     def _do_proposals():
         try:
@@ -943,12 +991,15 @@ def optimize_cv_for_job(cv_content: str, job_description: Union[str, Dict],
     if rewritten_titles:
         optimized_latex = rewritten_latex
     else:
-        optimized_latex = adapt_uploaded_latex(
+        optimized_latex = _enforce_house_design(
+            adapt_uploaded_latex(
+                cv_content,
+                analysis,
+                modifications,
+                job_description,
+                job_text,
+            ),
             cv_content,
-            analysis,
-            modifications,
-            job_description,
-            job_text,
         )
 
     return {
