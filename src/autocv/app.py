@@ -34,6 +34,7 @@ from flask import (
 )
 from flask_cors import CORS
 from flask_login import login_required, current_user  # noqa: F401 (current_user kept for parity)
+from flask_wtf.csrf import generate_csrf
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import Config, ensure_instance_dir
@@ -57,6 +58,8 @@ from . import interview_agent
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _TEMPLATE_DIR = _REPO_ROOT / "templates"
 _STATIC_DIR = _REPO_ROOT / "static"
+
+from .spa import serve_spa as _serve_spa  # noqa: E402 - kept after path constants
 
 
 # Plain-text sample CV used by the public demo when a visitor doesn't paste
@@ -324,55 +327,48 @@ def _register_error_handlers(app: Flask) -> None:
 
 def _register_routes(app: Flask) -> None:
     # --- Pages -------------------------------------------------------------
+    # All HTML routes serve the React SPA. The SPA's react-router decides which
+    # screen to render; Flask still owns every /api/* and /auth/* endpoint
+    # the SPA calls. ``login_required`` is enforced by the SPA's RequireAuth
+    # wrapper and by the API endpoints themselves.
 
     @app.route("/")
     def index():
-        """Use authentication as the first screen.
-
-        Anonymous visitors start at the login page. Authenticated users land in
-        the optimizer workspace.
-        """
-        if not current_user.is_authenticated:
-            return redirect(url_for("auth.login"))
-        return redirect(url_for("optimizer"))
+        return _serve_spa()
 
     @app.route("/optimizer")
-    @login_required
     def optimizer():
-        """Render the main CV optimizer application."""
-        return render_template("index.html")
+        return _serve_spa()
 
     @app.route("/interview")
-    @login_required
     def interview():
-        """Render the interview preparation page."""
-        return render_template("interview.html")
+        return _serve_spa()
 
     @app.route("/how-it-works")
     def how_it_works():
-        """Render the guided product workflow page (public explainer)."""
-        return render_template("how_it_works.html")
+        return _serve_spa()
 
     @app.route("/demo")
     def demo_page():
-        """Public, no-login taste of the optimizer."""
-        return render_template("demo.html")
+        return _serve_spa()
 
     @app.route("/workspace")
-    @login_required
     def workspace_page():
-        """Render the saved-jobs / CV-history workspace."""
-        return render_template("workspace.html")
+        return _serve_spa()
 
-    # Legal pages are public (linked from auth pages and the footer) so visitors
-    # can read them before creating an account.
     @app.route("/privacy")
     def privacy():
-        return render_template("privacy.html", updated="2026-05-24")
+        return _serve_spa()
 
     @app.route("/terms")
     def terms():
-        return render_template("terms.html", updated="2026-05-24")
+        return _serve_spa()
+
+    # --- CSRF token endpoint (SPA fetches it before mutating requests) -----
+
+    @app.route("/api/csrf-token", methods=["GET"])
+    def csrf_token_endpoint():
+        return jsonify({"csrf_token": generate_csrf()})
 
     # --- Interview API -----------------------------------------------------
 
@@ -649,3 +645,15 @@ Preferred Qualifications:
             "qualifications": ["Master's degree in Computer Science or related field"],
         }
         return jsonify({"success": True, "job": sample_job})
+
+    # --- SPA catch-all -----------------------------------------------------
+    # Anything not already matched (e.g. /reset-password/<token>, deep links)
+    # serves the SPA index so react-router can take over. /api and /static
+    # are matched first by their explicit routes / static handler.
+
+    @app.route("/<path:path>")
+    def spa_catch_all(path: str):
+        if path.startswith(("api/", "static/")):
+            # Let Flask's normal 404 handling run for unknown API/static paths.
+            return jsonify({"error": "Not found."}), 404
+        return _serve_spa()

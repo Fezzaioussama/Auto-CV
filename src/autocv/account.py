@@ -24,12 +24,14 @@ try:  # importable both as a bare module (main.py) and as the src package
     from tokens import make_token
     from tokens import PURPOSE_VERIFY
     from auth import _normalize_email, MIN_PASSWORD_LENGTH, _external_url
+    from spa import serve_spa
 except ImportError:  # pragma: no cover
     from .extensions import db, limiter
     from .models import User, Job, CVDocument, CoverLetter
     from . import email_utils
     from .tokens import make_token, PURPOSE_VERIFY
     from .auth import _normalize_email, MIN_PASSWORD_LENGTH, _external_url
+    from .spa import serve_spa
 
 
 account_bp = Blueprint("account", __name__)
@@ -40,9 +42,12 @@ def _auth_limit() -> str:
 
 
 @account_bp.route("/account", methods=["GET"])
-@login_required
 def account_page():
-    return render_template("account.html")
+    # Auth is enforced inside the SPA (RequireAuth) and on every /api/account/*
+    # endpoint here. Keeping the page route public lets the SPA render its own
+    # redirect-to-login flow with a return URL instead of triggering Flask's
+    # server-side redirect.
+    return serve_spa()
 
 
 @account_bp.route("/api/account/password", methods=["POST"])
