@@ -77,6 +77,15 @@ output/*
 plans/
 
 # ─────────────────────────────────────────────
+# Frontend (Vite + React + HeroUI)
+# ─────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+# NOTE: static/spa/ IS committed — the Flask lambda on Vercel reads
+# static/spa/index.html from disk to serve the SPA. Run
+# ``make frontend-build`` before pushing if you changed frontend/.
+
+# ─────────────────────────────────────────────
 # Editor / OS
 # ─────────────────────────────────────────────
 .vscode/
@@ -87,3 +96,6 @@ plans/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# WSL/Windows zone identifier junk
+*:Zone.Identifier
