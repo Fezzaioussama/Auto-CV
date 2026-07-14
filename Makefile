@@ -4,7 +4,7 @@ PORT ?= 5000
 PID_FILE ?= .auto-cv.pid
 LOG_FILE ?= /tmp/auto-cv-app-$(PORT).log
 
-.PHONY: help install run start stop restart status logs check py-check js-check test clean
+.PHONY: help install run start stop restart status logs check py-check js-check test clean frontend-install frontend-dev frontend-build
 
 help:
 	@echo "Auto-CV Make targets"
@@ -22,6 +22,15 @@ help:
 
 install:
 	uv sync
+
+frontend-install:
+	cd frontend && npm install
+
+frontend-dev:
+	cd frontend && npm run dev
+
+frontend-build:
+	cd frontend && npm install && npm run build
 
 run:
 	PORT=$(PORT) uv run python -m autocv

@@ -29,11 +29,13 @@ try:  # importable both as a bare module (main.py) and as the src package
     from models import User
     import email_utils
     from tokens import make_token, read_token, PURPOSE_RESET, PURPOSE_VERIFY
+    from spa import serve_spa
 except ImportError:  # pragma: no cover
     from .extensions import db, limiter
     from .models import User
     from . import email_utils
     from .tokens import make_token, read_token, PURPOSE_RESET, PURPOSE_VERIFY
+    from .spa import serve_spa
 
 try:
     from email_validator import validate_email, EmailNotValidError
@@ -104,7 +106,7 @@ def register():
         return redirect(url_for("optimizer"))
 
     if request.method == "GET":
-        return render_template("register.html")
+        return serve_spa()
 
     data = request.get_json(silent=True) if request.is_json else request.form
     email, err = _normalize_email((data or {}).get("email", ""))
@@ -113,15 +115,15 @@ def register():
 
     if err:
         resp = _auth_response(False, message=err, redirect_to="", status=400)
-        return resp if resp is not None else render_template("register.html")
+        return resp if resp is not None else serve_spa()
     if len(password) < MIN_PASSWORD_LENGTH:
         msg = f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
         resp = _auth_response(False, message=msg, redirect_to="", status=400)
-        return resp if resp is not None else render_template("register.html")
+        return resp if resp is not None else serve_spa()
     if User.query.filter_by(email=email).first():
         msg = "An account with this email already exists."
         resp = _auth_response(False, message=msg, redirect_to="", status=409)
-        return resp if resp is not None else render_template("register.html")
+        return resp if resp is not None else serve_spa()
 
     user = User(email=email, name=name)
     user.set_password(password)
@@ -160,7 +162,7 @@ def login():
         return redirect(url_for("auth.login"))
 
     if request.method == "GET":
-        return render_template("login.html")
+        return serve_spa()
 
     data = request.get_json(silent=True) if request.is_json else request.form
     email, _ = _normalize_email((data or {}).get("email", ""))
@@ -172,12 +174,12 @@ def login():
     if not valid:
         msg = "Incorrect email or password."
         resp = _auth_response(False, message=msg, redirect_to="", status=401)
-        return resp if resp is not None else render_template("login.html")
+        return resp if resp is not None else serve_spa()
 
     if current_app.config.get("REQUIRE_EMAIL_VERIFICATION") and not user.email_verified:
         msg = "Please confirm your email before signing in. Check your inbox or request a new link."
         resp = _auth_response(False, message=msg, redirect_to="", status=403)
-        return resp if resp is not None else render_template("login.html")
+        return resp if resp is not None else serve_spa()
 
     login_user(user, remember=True)
     target = session.pop("post_login_next", None) or url_for("optimizer")
@@ -280,7 +282,7 @@ def forgot_password():
     if current_user.is_authenticated:
         return redirect(url_for("optimizer"))
     if request.method == "GET":
-        return render_template("forgot_password.html")
+        return serve_spa()
 
     data = request.get_json(silent=True) if request.is_json else request.form
     email, _ = _normalize_email((data or {}).get("email", ""))
@@ -301,13 +303,19 @@ def forgot_password():
 @auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
 @limiter.limit(lambda: _auth_limit())
 def reset_password(token):
+    # GET always serves the SPA so react-router can render the form. Token
+    # validity is checked on submission below — the SPA shows the resulting
+    # error there if the token is bad or expired.
+    if request.method == "GET":
+        return serve_spa()
+
     user = _reset_user_from_token(token)
     if user is None:
-        flash("That reset link is invalid or has expired. Request a new one.", "error")
+        msg = "That reset link is invalid or has expired. Request a new one."
+        if _wants_json():
+            return jsonify({"success": False, "error": msg}), 400
+        flash(msg, "error")
         return redirect(url_for("auth.forgot_password"))
-
-    if request.method == "GET":
-        return render_template("reset_password.html", token=token)
 
     data = request.get_json(silent=True) if request.is_json else request.form
     password = (data or {}).get("password") or ""
@@ -316,7 +324,7 @@ def reset_password(token):
         if _wants_json():
             return jsonify({"success": False, "error": msg}), 400
         flash(msg, "error")
-        return render_template("reset_password.html", token=token)
+        return serve_spa()
 
     user.set_password(password)
     # A reset must boot any sessions opened with the old password (e.g. an
