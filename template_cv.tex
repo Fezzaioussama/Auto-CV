@@ -1,0 +1,299 @@
+\documentclass[letterpaper,10pt]{article}
+
+%========================================================
+% PACKAGES
+%========================================================
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{fontawesome5}
+\usepackage{multicol}
+\usepackage{bookmark}
+\usepackage{lastpage}
+\usepackage{graphicx}
+\usepackage{multicol}
+
+% Choose your fonts (uncomment the line you like).
+% Examples:
+%\usepackage[sfdefault]{FiraSans}
+%\usepackage[sfdefault]{roboto}
+%\usepackage[sfdefault]{noto-sans}
+%\usepackage[default]{sourcesanspro}
+
+% If you want a serif-based style, you might use:
+\usepackage{CormorantGaramond}
+\usepackage{charter}
+
+% Colors
+\usepackage{xcolor}
+\definecolor{accentTitle}{HTML}{0e6e55}
+\definecolor{accentText}{HTML}{0e6e55}
+\definecolor{accentLine}{HTML}{a16f0b}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\urlstyle{same}
+
+% Adjust Margins
+\addtolength{\oddsidemargin}{-0.7in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1.19in}
+\addtolength{\topmargin}{-0.7in}
+\addtolength{\textheight}{1.4in}
+
+\setlength{\multicolsep}{-3.0pt}
+\setlength{\columnsep}{-1pt}
+\setlength{\tabcolsep}{0pt}
+\setlength{\footskip}{3.7pt}
+\raggedbottom
+\raggedright
+
+% ATS Readability
+\input{glyphtounicode}
+\pdfgentounicode=1
+
+%-----------------%
+% Custom Commands %
+%-----------------%
+
+\newcommand{\documentTitle}[2]{
+  \begin{center}
+    {\Huge\color{accentTitle} #1}
+    \vspace{10pt}
+    {\color{accentLine} \hrule}
+    \vspace{2pt}
+    {\footnotesize #2}
+    \vspace{2pt}
+    {\color{accentLine} \hrule}
+  \end{center}
+}
+
+\newcommand{\documentFooter}[1]{
+  \setlength{\footskip}{10.25pt}
+  \fancyfoot[C]{\footnotesize #1}
+}
+
+\newcommand{\numberedPages}{
+  \documentFooter{\thepage/\pageref{LastPage}}
+}
+
+\titleformat{\section}{
+  \vspace{-5pt}
+  \color{accentText}
+  \raggedright\large\bfseries
+}{}{0em}{}[\color{accentLine}\titlerule]
+
+\newcommand{\tinysection}[1]{
+  \phantomsection
+  \addcontentsline{toc}{section}{#1}
+  {\large{\bfseries\color{accentText}#1} {\color{accentLine} |}}
+}
+
+\newcommand{\heading}[2]{
+  \hspace{10pt}#1\hfill#2\\
+}
+
+\newcommand{\headingBf}[2]{
+  \heading{\textbf{#1}}{\textbf{#2}}
+}
+
+\newcommand{\headingIt}[2]{
+  \heading{\textit{#1}}{\textit{#2}}
+}
+
+\newenvironment{resume_list}{
+  \vspace{-7pt}
+  \begin{itemize}[itemsep=-2px, parsep=1pt, leftmargin=30pt]
+}{
+  \end{itemize}
+}
+
+\newcommand{\itemTitle}[1]{
+  \item[] \underline{#1}\vspace{4pt}
+}
+
+\renewcommand\labelitemi{--}
+
+%==================================================
+\begin{document}
+
+% Example of optional page numbering (requires two runs):
+%\numberedPages
+
+%-----------------------------------
+% TOP HEADING: Name + Contact Info
+%-----------------------------------
+\begin{center}
+  \begin{minipage}[c]{0.15\textwidth}
+    % \includegraphics[width=\linewidth,clip,keepaspectratio]{photo.jpg}
+  \end{minipage}\hfill
+  \begin{minipage}[c]{0.80\textwidth}
+    \documentTitle{Prénom Nom}{
+      \href{tel:+33000000000}{\raisebox{-0.05\height}\faPhone\ +33 0 00 00 00 00} ~|~
+      \href{mailto:email@example.com}{\raisebox{-0.15\height}\faEnvelope\ email@example.com} ~|~
+      \href{https://www.linkedin.com/in/username}{\raisebox{-0.15\height}\faLinkedin\ linkedin.com/username} ~|~
+      \href{https://github.com/username}{\raisebox{-0.15\height}\faGithub\ github.com/username}
+    }
+  \end{minipage}
+\end{center}
+
+%----------------
+% SUMMARY
+%----------------
+
+\tinysection{Résumé}
+% Bref paragraphe de présentation (2-3 lignes).
+
+%-------------
+% SKILLS / COMPÉTENCES
+%-------------
+
+\section{Compétences}
+
+\begin{multicols}{2}
+  \begin{tabular}{@{}l l@{}}
+    \textbf{Catégorie 1 :} &  \\
+    \textbf{Catégorie 2 :} &  \\
+    \textbf{Catégorie 3 :} &  \\
+    \textbf{Catégorie 4 :} &  \\
+    \textbf{Catégorie 5 :} &  \\
+    \textbf{Catégorie 6 :} &  \\
+    \textbf{Catégorie 7 :} &  \\
+    \textbf{Catégorie 8 :} &  \\
+  \end{tabular}
+\end{multicols}
+
+%---------------
+% EXPERIENCE
+%---------------
+
+\section{Expérience}
+
+\headingBf{Nom de l'entreprise}{Mois Année -- Mois Année}
+\headingIt{Intitulé du poste}{Ville, Pays}
+\begin{resume_list}
+  \item \textbf{Réalisation clé :} Description de la mission ou de l'accomplissement.
+  \item \textbf{Réalisation clé :} Description de la mission ou de l'accomplissement.
+  \item \textbf{Réalisation clé :} Description de la mission ou de l'accomplissement.
+\end{resume_list}
+
+\headingBf{Nom de l'entreprise}{Mois Année -- Mois Année}
+\headingIt{Intitulé du poste}{Ville, Pays}
+\begin{resume_list}
+  \item \textbf{Réalisation clé :} Description de la mission ou de l'accomplissement.
+  \item \textbf{Réalisation clé :} Description de la mission ou de l'accomplissement.
+  \item \textbf{Réalisation clé :} Description de la mission ou de l'accomplissement.
+\end{resume_list}
+
+\headingBf{Nom de l'entreprise}{Mois Année -- Mois Année}
+\headingIt{Intitulé du poste}{Ville, Pays}
+\begin{resume_list}
+  \item \textbf{Réalisation clé :} Description de la mission ou de l'accomplissement.
+  \item \textbf{Réalisation clé :} Description de la mission ou de l'accomplissement.
+\end{resume_list}
+
+%---------------
+% EDUCATION / FORMATION
+%---------------
+
+\section{Formation}
+
+\headingBf{Nom de l'établissement}{Mois Année -- Mois Année}
+\headingIt{Intitulé du diplôme}{Ville, Pays}
+
+\headingBf{Nom de l'établissement}{Mois Année -- Mois Année}
+\headingIt{Intitulé du diplôme}{Ville, Pays}
+
+\headingBf{Nom de l'établissement}{Mois Année -- Mois Année}
+\headingIt{Intitulé du diplôme}{Ville, Pays}
+
+%------------------------
+% PROFESSIONAL & PERSONAL PROJECTS
+%-----------------------
+
+\section{Projets Professionnels \& Personnels}
+\begin{resume_list}
+  \item \textbf{Titre du projet} \\
+  Description courte du projet, des technologies utilisées et des résultats obtenus.
+
+  \item \textbf{Titre du projet} \\
+  Description courte du projet, des technologies utilisées et des résultats obtenus.
+
+  \item \textbf{Titre du projet} \\
+  Description courte du projet, des technologies utilisées et des résultats obtenus.
+
+  \item \textbf{Titre du projet} \\
+  Description courte du projet, des technologies utilisées et des résultats obtenus.
+\end{resume_list}
+
+%---------------
+% PUBLICATIONS
+%---------------
+
+\section{Publications}
+\begin{resume_list}
+  \item \textbf{Auteur(s), "Titre de la publication," Source, Date. [Type]. Disponible en ligne :}
+    \href{https://example.com}{URL}
+
+  \item \textbf{Auteur(s), "Titre de la publication," Source, Date. [Type]. Disponible en ligne :}
+    \href{https://example.com}{URL}
+\end{resume_list}
+
+%---------------
+% LANGUAGES / LANGUES
+%---------------
+
+\section{Langues}
+\begin{resume_list}
+  \item \textbf{Langue 1 :} Niveau
+  \item \textbf{Langue 2 :} Niveau
+  \item \textbf{Langue 3 :} Niveau
+\end{resume_list}
+
+%---------------
+% CERTIFICATES / CERTIFICATS
+%---------------
+
+\section{Certifications}
+\begin{multicols}{2}
+\begin{itemize}[leftmargin=*, noitemsep]
+  \item \textbf{Nom de la certification}: \href{https://example.com}{Organisme}
+  \item \textbf{Nom de la certification}: \href{https://example.com}{Organisme}
+  \item \textbf{Nom de la certification}: \href{https://example.com}{Organisme}
+
+  \columnbreak
+  \item \textbf{Nom de la certification}: \href{https://example.com}{Organisme}
+  \item \textbf{Nom de la certification}: \href{https://example.com}{Organisme}
+  \item \textbf{Nom de la certification}: \href{https://example.com}{Organisme}
+\end{itemize}
+\end{multicols}
+\newline
+\textbf{Consultable en ligne depuis : } \url{https://example.com}
+
+% %---------------
+% % VOLUNTEERING / BÉNÉVOLAT
+% %---------------
+
+% \section{Bénévolat}
+% \noindent Description des activités bénévoles.
+
+%---------------------
+% PERSONAL QUALITIES
+%---------------------
+
+\section{Qualités Personnelles}
+% Liste de qualités personnelles séparées par des points-virgules.
+
+%-------------
+% INTERESTS
+%-------------
+
+\section{Centres d'Intérêt}
+% Liste de centres d'intérêt séparés par des points-virgules.
+
+\end{document}

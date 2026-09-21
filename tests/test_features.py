@@ -44,16 +44,19 @@ def test_public_pages_are_reachable_anonymously(client):
         assert client.get(path).status_code == 200
 
 
-def test_root_is_authentication_first(client):
+def test_root_serves_the_spa_shell(client):
+    # Every HTML route now returns the React SPA shell (200); auth is enforced
+    # client-side by RequireAuth and server-side by the /api/* endpoints.
     r = client.get("/", follow_redirects=False)
-    assert r.status_code == 302
-    assert r.headers["Location"].endswith("/login")
+    assert r.status_code == 200
 
 
-def test_optimizer_requires_login(client):
-    r = client.get("/optimizer", follow_redirects=False)
-    assert r.status_code == 302
-    assert "/login" in r.headers["Location"]
+def test_optimizer_page_serves_spa_but_its_api_requires_login(client):
+    # The page route hands back the SPA shell to anyone...
+    assert client.get("/optimizer", follow_redirects=False).status_code == 200
+    # ...but the data endpoint it drives rejects anonymous callers with 401,
+    # so no one can run an optimization without an account.
+    assert client.post("/api/optimize-cv", json={"cv_latex": SAMPLE_LATEX}).status_code == 401
 
 
 def test_demo_runs_without_login(client):

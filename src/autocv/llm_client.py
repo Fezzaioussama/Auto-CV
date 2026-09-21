@@ -78,6 +78,7 @@ class Task:
 
     ANALYSIS = "ANALYSIS"              # matcher: CV vs job analysis
     SECTION_REWRITE = "SECTION_REWRITE"  # section_rewriter: rewrite one section
+    SECTION_FILL = "SECTION_FILL"      # template_fill: fill one template section
     PROPOSAL = "PROPOSAL"              # section_rewriter: propose new sections
     INTERVIEW = "INTERVIEW"            # interview_agent: questions + review
     SMART_CV = "SMART_CV"             # smart_cv_generator: full CV generation
