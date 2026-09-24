@@ -10,6 +10,9 @@ risk: a crafted URL could point at internal services, cloud metadata endpoints
   reserved / multicast IP (including IPv6 and IPv4-mapped forms),
 * re-validating the target on every redirect hop (so a public URL can't bounce
   to an internal one),
+* re-checking the IP of the socket actually connected (so DNS rebinding — a
+  host that resolves public for the check, then private for the connection —
+  is blocked too), and ignoring proxy env vars that would bypass that check,
 * capping the response size and time.
 
 It returns readable plain text extracted from the page, ready to feed the parser.
@@ -23,6 +26,9 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.connection import HTTPConnection, HTTPSConnection
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 
 
 class FetchError(Exception):
@@ -68,6 +74,57 @@ def _assert_safe_url(url: str) -> None:
     for ip in resolved:
         if not _ip_is_public(ip):
             raise FetchError("That URL points to a non-public address and was blocked.")
+
+
+class _PublicPeerMixin:
+    """Refuse the connection unless the connected peer is a public address.
+
+    ``_assert_safe_url`` validates the hostname's DNS answer, but the HTTP
+    client resolves it again when connecting. Checking the socket's real peer
+    closes that time-of-check/time-of-use gap (DNS rebinding).
+    """
+
+    def _new_conn(self):
+        sock = super()._new_conn()
+        if not _ip_is_public(sock.getpeername()[0]):
+            sock.close()
+            raise FetchError("That URL points to a non-public address and was blocked.")
+        return sock
+
+
+class _PublicHTTPConnection(_PublicPeerMixin, HTTPConnection):
+    pass
+
+
+class _PublicHTTPSConnection(_PublicPeerMixin, HTTPSConnection):
+    pass
+
+
+class _PublicHTTPPool(HTTPConnectionPool):
+    ConnectionCls = _PublicHTTPConnection
+
+
+class _PublicHTTPSPool(HTTPSConnectionPool):
+    ConnectionCls = _PublicHTTPSConnection
+
+
+class _PublicOnlyAdapter(HTTPAdapter):
+    def init_poolmanager(self, *args, **kwargs):
+        super().init_poolmanager(*args, **kwargs)
+        self.poolmanager.pool_classes_by_scheme = {
+            "http": _PublicHTTPPool,
+            "https": _PublicHTTPSPool,
+        }
+
+
+def _session() -> requests.Session:
+    session = requests.Session()
+    # Proxy env vars would make the proxy the socket peer, hiding the target.
+    session.trust_env = False
+    adapter = _PublicOnlyAdapter()
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
 
 
 class _TextExtractor(HTMLParser):
@@ -127,11 +184,16 @@ def fetch_url_text(url: str) -> str:
     if not urlparse(url).scheme:
         url = "https://" + url  # be forgiving about a missing scheme
 
+    with _session() as session:
+        return _fetch(session, url)
+
+
+def _fetch(session: requests.Session, url: str) -> str:
     current = url
     for _ in range(MAX_REDIRECTS + 1):
         _assert_safe_url(current)
         try:
-            resp = requests.get(
+            resp = session.get(
                 current,
                 headers={"User-Agent": _UA, "Accept": "text/html,application/xhtml+xml"},
                 timeout=TIMEOUT,

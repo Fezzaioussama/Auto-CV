@@ -10,7 +10,7 @@ Security — the LaTeX is user-controlled, so:
 * the compile is sandboxed: ``-no-shell-escape`` plus a "paranoid" file-access
   env (no reads/writes outside the throwaway compile dir) and ``cwd`` pinned to
   that dir, so a malicious document can't read server files or run commands;
-* ``/compile`` requires a shared bearer token (``COMPILE_TOKEN``);
+* ``/compile`` requires a shared bearer token (``COMPILE_TOKEN``, 32+ chars);
 * the container runs as a non-root user (see the Dockerfile);
 * request size and compile time are capped.
 """
@@ -29,8 +29,17 @@ from flask import Flask, jsonify, request
 app = Flask(__name__)
 
 # Shared secret the Auto-CV app sends as ``Authorization: Bearer <token>``.
-# Missing tokens disable compilation.
+# Missing or weak (guessable) tokens disable compilation.
+MIN_TOKEN_LENGTH = 32
 COMPILE_TOKEN = os.environ.get("COMPILE_TOKEN", "").strip()
+if COMPILE_TOKEN and len(COMPILE_TOKEN) < MIN_TOKEN_LENGTH:
+    print(
+        f"[latex-service] COMPILE_TOKEN is shorter than {MIN_TOKEN_LENGTH} characters; "
+        "compilation is disabled. Generate one with: "
+        'python -c "import secrets;print(secrets.token_hex(32))"',
+        flush=True,
+    )
+    COMPILE_TOKEN = ""
 # Per-document compile budget (seconds); nonstopmode + this prevents hangs.
 COMPILE_TIMEOUT = float(os.environ.get("COMPILE_TIMEOUT", "60"))
 # Reject oversized payloads early (defends against memory/CPU abuse).
