@@ -29,7 +29,7 @@ from flask import Flask, jsonify, request
 app = Flask(__name__)
 
 # Shared secret the Auto-CV app sends as ``Authorization: Bearer <token>``.
-# If unset the endpoint is open — always set it in production.
+# Missing tokens disable compilation.
 COMPILE_TOKEN = os.environ.get("COMPILE_TOKEN", "").strip()
 # Per-document compile budget (seconds); nonstopmode + this prevents hangs.
 COMPILE_TIMEOUT = float(os.environ.get("COMPILE_TIMEOUT", "60"))
@@ -37,6 +37,8 @@ COMPILE_TIMEOUT = float(os.environ.get("COMPILE_TIMEOUT", "60"))
 MAX_LATEX_BYTES = int(os.environ.get("MAX_LATEX_BYTES", str(2 * 1024 * 1024)))  # 2 MB
 # Keep the returned log bounded — only the tail matters for error extraction.
 MAX_LOG_CHARS = 8000
+# Bound the JSON body before parsing, including escaped Unicode content.
+app.config["MAX_CONTENT_LENGTH"] = MAX_LATEX_BYTES * 6 + 1024
 
 
 def _sandboxed_env() -> dict:
@@ -50,11 +52,9 @@ def _sandboxed_env() -> dict:
 
 def _authorized() -> bool:
     if not COMPILE_TOKEN:
-        return True
+        return False
     sent = request.headers.get("Authorization", "")
-    if sent.startswith("Bearer "):
-        sent = sent[len("Bearer "):]
-    return secrets.compare_digest(sent, COMPILE_TOKEN)
+    return secrets.compare_digest(sent.encode("utf-8"), f"Bearer {COMPILE_TOKEN}".encode("utf-8"))
 
 
 @app.get("/health")
@@ -70,8 +70,10 @@ def compile_endpoint():
         return jsonify({"success": False, "log": "unauthorized"}), 401
 
     data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "log": "expected a JSON object"}), 400
     latex = data.get("latex") or ""
-    if not latex:
+    if not isinstance(latex, str) or not latex:
         return jsonify({"success": False, "log": "no latex provided"}), 400
     if len(latex.encode("utf-8")) > MAX_LATEX_BYTES:
         return jsonify({"success": False, "log": "document too large"}), 413

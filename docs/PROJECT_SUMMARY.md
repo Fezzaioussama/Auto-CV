@@ -34,7 +34,7 @@ auto-cv-app/
 - Extracts skills from job descriptions
 - Identifies requirements and qualifications
 - Detects company information
-- Uses NLTK for natural language processing
+- Uses offline tokenization and bundled English stop words
 
 ### 2. CV Matching Engine (`src/autocv/matcher.py`)
 - Parses LaTeX CVs into structured sections
@@ -61,7 +61,7 @@ auto-cv-app/
 ### Backend
 - **Flask 3.0.0** - Web framework
 - **Python 3.8+** - Programming language
-- **NLTK** - Natural language processing
+- **scikit-learn** - Bundled stop words for text processing
 - **scikit-learn** - Machine learning utilities
 - **NumPy** - Numerical computing
 
@@ -86,8 +86,7 @@ auto-cv-app/
 # Install Python dependencies
 uv sync
 
-# Download NLTK data
-uv run python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('stopwords')"
+# Text parsing works offline; no language-data downloads are required.
 
 # Run the application
 uv run python -m autocv
@@ -165,7 +164,7 @@ Senior Software Engineer, Tech Company, Inc.\hfill 2020 - Present
 
 ### Common Issues
 1. **pdflatex not found** - Install LaTeX distribution
-2. **NLTK errors** - Run `nltk.download()` commands
+Text parsing works offline without downloading language data.
 3. **Port already in use** - Use `PORT=5001 uv run python -m autocv`
 
 See `docs/INSTALLATION.md` for detailed troubleshooting.
@@ -193,7 +192,7 @@ See `docs/INSTALLATION.md` for detailed troubleshooting.
 
 1. Install required packages (`uv sync`)
 2. Install LaTeX distribution
-3. Download NLTK data
+3. Configure the LLM provider in `.env`
 4. Run `uv run python -m autocv`
 5. Open http://localhost:5000 in browser
 6. Upload job description and CV

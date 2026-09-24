@@ -2,9 +2,9 @@
 
 Follows the same philosophy as the rest of the app: everything is driven by
 environment variables and it **degrades gracefully**. If no SMTP host is
-configured (e.g. local dev), emails are not sent over the network — instead the
-full message, including any action link, is logged so the developer can copy the
-link from the console. That keeps the reset/verify flows fully usable offline.
+configured, emails are not sent. In explicit development mode only, the message
+is logged so a developer can follow action links locally. Production never logs
+message contents or reset/verification tokens.
 
 Environment
 -----------
@@ -50,7 +50,10 @@ def send_email(to: str, subject: str, body_text: str, *, body_html: str | None =
     send can't 500 a request or leak provider errors to the user.
     """
     if not is_configured():
-        # Dev fallback: log the whole message so the link is reachable locally.
+        if current_app.config.get("IS_PRODUCTION", True):
+            current_app.logger.error("Email delivery unavailable: SMTP is not configured.")
+            return False
+        # Explicit development mode only: make local action links reachable.
         current_app.logger.warning(
             "[email:DEV] SMTP not configured — not sending. "
             "To=%s | Subject=%s\n%s",
@@ -89,7 +92,7 @@ def send_email(to: str, subject: str, body_text: str, *, body_html: str | None =
                 server.send_message(msg)
         return True
     except Exception as exc:  # noqa: BLE001 - never propagate mail errors
-        current_app.logger.error("Email send to %s failed: %s", to, exc)
+        current_app.logger.error("Email delivery failed (%s).", type(exc).__name__)
         return False
 
 

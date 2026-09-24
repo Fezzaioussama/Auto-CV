@@ -16,7 +16,7 @@ From the project root:
 
 ```bash
 uv sync   # creates .venv and installs the project + dev dependencies
-uv run python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('stopwords')"
+# Text parsing works offline; no language-data downloads are required.
 cp .env.example .env
 ```
 

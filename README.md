@@ -214,8 +214,10 @@ per answer → track score evolution and next practice actions.
 cookies, ephemeral secret key). **Anything else — including unset — is treated
 as production.** Never commit `.env`; it is gitignored.
 
-With `SMTP_HOST` blank, password-reset and verification links are logged to the
-console instead of emailed — fine for local dev, not for production.
+With `SMTP_HOST` blank, action links are logged only in development. Production
+does not log them and requires SMTP for delivery. Set `PUBLIC_BASE_URL` to your
+trusted HTTPS application origin for production reset/verification links.
+Use a randomly generated `SECRET_KEY` of at least 32 characters.
 
 ## Verification
 

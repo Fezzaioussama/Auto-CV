@@ -14,10 +14,7 @@ Auto-CV is an AI-powered system that helps you create tailored CVs based on job 
 uv sync
 ```
 
-2. Download NLTK data (if needed):
-```bash
-uv run python -c "import nltk; nltk.download('punkt_tab'); nltk.download('stopwords')"
-```
+Text parsing works offline; no additional language-data downloads are required.
 
 ## Quick Test (No Server Required)
 
@@ -124,7 +121,7 @@ auto-cv-app/
 
 ## Troubleshooting
 
-**NLTK errors**: Run `python -c "import nltk; nltk.download('punkt_tab')"` to download required data.
+Text parsing works offline without downloading language data.
 
 **PDF generation**: Install a LaTeX distribution (e.g., `sudo apt install texlive-full` on Ubuntu).
 

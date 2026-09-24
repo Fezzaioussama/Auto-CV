@@ -43,16 +43,10 @@ uv manages the virtual environment, so there is no manual `venv` creation or
 `activate` step — prefix commands with `uv run` (for example `uv run pytest`).
 The dependency set is declared in `pyproject.toml` and pinned in `uv.lock`.
 
-### Step 3: Download NLTK Data
+### Step 3: Text Parsing
 
-The application uses NLTK for text processing. Download the required data:
-
-```bash
-# Run this in your terminal or Python shell:
-uv run python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('stopwords')"
-```
-
-Or run it as part of the first application startup - it will prompt you automatically.
+Text parsing uses local tokenization and scikit-learn's bundled stop words.
+No language-data downloads or network access are required.
 
 ### Step 4: Configure The LLM Provider
 
@@ -143,12 +137,10 @@ The application will start on `http://localhost:5000`
 
 Make sure `pdflatex` is in your system PATH.
 
-#### 2. NLTK download errors
+#### 2. Text parsing setup
 
-**Solution:** Manually download NLTK data:
-```bash
-uv run python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('stopwords')"
-```
+Run `uv sync` to install the declared dependencies. Parsing requires no
+separate downloaded corpora.
 
 #### 3. Port already in use (5000)
 

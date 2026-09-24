@@ -162,6 +162,8 @@ def _is_production() -> bool:
 def _resolve_secret_key() -> str:
     key = os.environ.get("SECRET_KEY", "").strip()
     if key:
+        if _is_production() and len(key) < 32:
+            raise RuntimeError("SECRET_KEY must be at least 32 characters in production")
         return key
     if _is_production():
         # In production a missing key is fatal: a generated key would invalidate

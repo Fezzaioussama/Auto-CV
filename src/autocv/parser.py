@@ -4,12 +4,9 @@ Extracts skills, qualifications, and requirements from job descriptions.
 """
 
 import json
-import os
 import re
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from nltk.probability import FreqDist
+from collections import Counter
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 import string
 
 # LLM-based skill extraction (works for any profession, not just tech). All LLM
@@ -24,39 +21,11 @@ except ImportError:  # pragma: no cover
         complete = None
         Task = None
 
-# Vercel functions can only write to /tmp at runtime. NLTK downloads small data
-# packages on first use, so point it at writable scratch space in that environment.
-if (os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV")) and not os.environ.get("NLTK_DATA"):
-    _nltk_data_dir = "/tmp/nltk_data"
-    os.environ["NLTK_DATA"] = _nltk_data_dir
-    if _nltk_data_dir not in nltk.data.path:
-        nltk.data.path.insert(0, _nltk_data_dir)
-
-# Download required NLTK data
-try:
-    nltk.data.find('tokenizers/punkt_tab')
-except (LookupError, OSError):
-    try:
-        nltk.download('punkt_tab', quiet=True)
-    except:
-        pass  # Silent fail for sandbox environments
-
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords', quiet=True)
-
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt', quiet=True)
-
-
 class JobDescriptionParser:
     """Parser for extracting information from job descriptions."""
     
     def __init__(self):
-        self.stop_words = set(stopwords.words('english'))
+        self.stop_words = ENGLISH_STOP_WORDS
         self.common_skills = self._load_common_skills()
     
     def _load_common_skills(self):
@@ -303,9 +272,9 @@ class JobDescriptionParser:
     
     def get_top_skills(self, text, n=10):
         """Get the top N most frequent skills from text."""
-        words = word_tokenize(text.lower())
+        words = re.findall(r"\b[^\W\d_]+\b", text.lower())
         words = [w for w in words if w not in self.stop_words and w.isalpha()]
-        freq_dist = FreqDist(words)
+        freq_dist = Counter(words)
         
         # Filter for skills
         skills = [word for word, count in freq_dist.most_common(n) 

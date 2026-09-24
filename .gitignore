@@ -87,3 +87,13 @@ plans/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Deployment metadata, local personal fixtures, and credential exports
+.vercel/
+node_modules/
+test_example/
+*.p12
+*.pfx
+*.sqlite
+*.db-wal
+*.db-shm

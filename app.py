@@ -22,7 +22,6 @@ def _configure_vercel_runtime_dirs() -> None:
         "HOME": os.path.join(runtime_root, "home"),
         "XDG_CACHE_HOME": os.path.join(runtime_root, "cache"),
         "MPLCONFIGDIR": os.path.join(runtime_root, "matplotlib"),
-        "NLTK_DATA": os.path.join(runtime_root, "nltk_data"),
         "JOBLIB_TEMP_FOLDER": os.path.join(runtime_root, "joblib"),
         "TMPDIR": os.path.join(runtime_root, "tmp"),
         "TEMP": os.path.join(runtime_root, "tmp"),
@@ -52,14 +51,12 @@ try:
     app = create_app()
 except Exception as exc:  # noqa: BLE001 - keep Vercel function alive for diagnostics
     traceback.print_exc()
-    _startup_error = f"{type(exc).__name__}: {exc}"
 
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")
     def startup_error(path: str = ""):
         body = (
             "Auto-CV failed during server startup.\n\n"
-            f"Error: {_startup_error}\n\n"
             "Open the latest Vercel deployment logs for the full Python traceback."
         )
         return Response(body, status=500, mimetype="text/plain")

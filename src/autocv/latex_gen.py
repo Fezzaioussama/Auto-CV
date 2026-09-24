@@ -341,34 +341,26 @@ def compile_latex_to_pdf(latex_filepath: str, output_dir: Optional[str] = None) 
     Returns:
         Path to the generated PDF or None if compilation fails
     """
-    import subprocess
     import tempfile
-    
-    if not os.path.exists(latex_filepath):
-        print(f"Error: LaTeX file not found: {latex_filepath}")
+    from .latex_repair import compile_latex
+
+    if not os.path.isfile(latex_filepath):
         return None
-    
-    output_dir = output_dir or os.path.dirname(latex_filepath) or '.'
+    output_dir = output_dir or os.path.dirname(latex_filepath) or "."
     base_name = os.path.splitext(os.path.basename(latex_filepath))[0]
-    
-    # Try to compile with pdflatex
     try:
-        result = subprocess.run(
-            ['pdflatex', '-interaction=nonstopmode', 
-             f'-output-directory={output_dir}', latex_filepath],
-            capture_output=True,
-            timeout=3600
-        )
-        
-        if result.returncode == 0:
+        with open(latex_filepath, encoding="utf-8") as source:
+            latex = source.read()
+        with tempfile.TemporaryDirectory() as workdir:
+            result = compile_latex(latex, workdir=workdir, timeout=60)
+        if result.success and result.pdf_bytes:
+            os.makedirs(output_dir, exist_ok=True)
             pdf_path = os.path.join(output_dir, f"{base_name}.pdf")
-            if os.path.exists(pdf_path):
-                return pdf_path
-    except FileNotFoundError:
-        print("pdflatex not found. Please install a LaTeX distribution.")
-    except subprocess.TimeoutExpired:
-        print("LaTeX compilation timed out.")
-    
+            with open(pdf_path, "wb") as output:
+                output.write(result.pdf_bytes)
+            return pdf_path
+    except (OSError, ValueError):
+        return None
     return None
 
 
