@@ -40,7 +40,7 @@ python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 2. **Root Directory:** `latex-service`. Render auto-detects the `Dockerfile`.
 3. Add env var `COMPILE_TOKEN` = the token you generated.
 4. Create. The first build is slow (TeX Live is large); afterwards it's cached.
-5. Note the public URL, e.g. `https://auto-cv-latex.onrender.com`.
+5. Note the public URL, e.g. `https://your-latex-service.onrender.com`.
 6. Verify: `curl https://<your-url>/health` → `{"ok": true, "pdflatex": true}`.
 
 > Render's free tier sleeps when idle, so the first PDF after a pause waits for a

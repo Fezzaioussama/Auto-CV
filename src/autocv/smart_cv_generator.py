@@ -831,33 +831,34 @@ Highlights from professional background demonstrating capabilities required for 
         Returns:
             Path to generated PDF
         """
-        import subprocess
-        
+        import tempfile
+
+        from .latex_repair import compile_latex
+
         if not os.path.exists(latex_filepath):
             raise FileNotFoundError(f"LaTeX file not found: {latex_filepath}")
-        
+
         output_dir = output_dir or os.path.dirname(latex_filepath)
         base_name = os.path.splitext(os.path.basename(latex_filepath))[0]
-        
+
+        with open(latex_filepath, encoding="utf-8") as source:
+            latex = source.read()
+        # Reuse the sandboxed compiler (-no-shell-escape + paranoid file access)
+        # since the LaTeX is LLM-generated and must be treated as untrusted.
         try:
-            result = subprocess.run(
-                ['pdflatex', '-interaction=nonstopmode', 
-                 f'-output-directory={output_dir}', latex_filepath],
-                capture_output=True,
-                timeout=3600
-            )
-            
-            if result.returncode == 0:
-                pdf_path = os.path.join(output_dir, f"{base_name}.pdf")
-                if os.path.exists(pdf_path):
-                    return pdf_path
-            else:
-                raise RuntimeError(f"pdflatex failed: {result.stderr.decode()}")
-                
+            with tempfile.TemporaryDirectory() as workdir:
+                result = compile_latex(latex, workdir=workdir)
         except FileNotFoundError:
             raise RuntimeError("pdflatex not found. Please install a LaTeX distribution.")
-        except subprocess.TimeoutExpired:
+        if result.timed_out:
             raise RuntimeError("LaTeX compilation timed out.")
+        if not (result.success and result.pdf_bytes):
+            raise RuntimeError(f"pdflatex failed: {result.log[-2000:]}")
+
+        pdf_path = os.path.join(output_dir, f"{base_name}.pdf")
+        with open(pdf_path, "wb") as output:
+            output.write(result.pdf_bytes)
+        return pdf_path
 
 
 def generate_smart_cv(job_description: str, cv_skills: List[str] = None,

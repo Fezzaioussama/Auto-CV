@@ -11,7 +11,7 @@ from conftest import register, login
 @pytest.mark.parametrize("target", ["//evil.example/path", "/\\evil.example/path", "/\tevil.example", "https://evil.example/"])
 def test_login_rejects_external_return_targets(client, target):
     register(client)
-    client.get("/logout")
+    client.post("/logout")
     client.get("/login", query_string={"next": target})
     response = login(client)
     assert response.get_json()["redirect"] == "/optimizer"
@@ -19,7 +19,7 @@ def test_login_rejects_external_return_targets(client, target):
 
 def test_login_keeps_local_return_target(client):
     register(client)
-    client.get("/logout")
+    client.post("/logout")
     client.get("/login", query_string={"next": "/workspace"})
     assert login(client).get_json()["redirect"] == "/workspace"
 
@@ -110,3 +110,16 @@ def test_keyword_parser_works_without_downloaded_language_data():
     result = JobDescriptionParser().get_top_skills("The Python developer uses Python and SQL, with Docker.")
     assert result[:3] == ["python", "sql", "docker"]
     assert "the" not in result
+
+
+def test_logout_rejects_get(client):
+    register(client)
+    assert client.get("/logout").status_code == 405
+    assert client.get("/api/me").get_json()["authenticated"] is True
+
+
+def test_llm_health_hides_config_in_production(app, client, monkeypatch):
+    monkeypatch.setitem(app.config, "IS_PRODUCTION", True)
+    body = client.get("/api/llm/health").get_json()
+    assert "config" not in body
+    assert "source" in body

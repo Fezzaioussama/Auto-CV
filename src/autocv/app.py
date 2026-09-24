@@ -573,12 +573,15 @@ def _register_routes(app: Flask) -> None:
 
     @app.route("/api/llm/health", methods=["GET"])
     def llm_health():
-        """Report the active LLM provider/model (never exposes the API key)."""
-        return jsonify({
-            "success": True,
-            "source": llm_client.active_source(),
-            "config": llm_client.describe_config(),
-        })
+        """Report the active LLM provider/model (never exposes the API key).
+
+        This route is public, so in production it only names the provider: the
+        base URL and model can reveal private infrastructure (e.g. a vLLM host).
+        """
+        payload = {"success": True, "source": llm_client.active_source()}
+        if not app.config.get("IS_PRODUCTION"):
+            payload["config"] = llm_client.describe_config()
+        return jsonify(payload)
 
     @app.route("/api/demo", methods=["POST"])
     @limiter.limit(demo_limit)

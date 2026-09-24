@@ -9,7 +9,7 @@ def test_change_password_requires_current(client):
                        json={"current_password": "WRONG", "new_password": "newpassword1"}).status_code == 403
     assert client.post("/api/account/password",
                        json={"current_password": "originalpass", "new_password": "newpassword1"}).status_code == 200
-    client.get("/logout")
+    client.post("/logout")
     r = login(client, "p1@example.com", "newpassword1")  # JSON login → 200
     assert r.status_code == 200 and r.get_json()["success"] is True
 

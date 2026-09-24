@@ -14,7 +14,7 @@ def test_register_logs_in_and_me(client):
 
 def test_duplicate_email_rejected(client):
     register(client, "bob@example.com")
-    client.get("/logout")
+    client.post("/logout")
     r = register(client, "bob@example.com")
     assert r.status_code == 409
 
@@ -26,14 +26,14 @@ def test_short_password_rejected(client):
 
 def test_login_wrong_password(client):
     register(client, "carol@example.com", "rightpassword")
-    client.get("/logout")
+    client.post("/logout")
     r = login(client, "carol@example.com", "wrongpassword")
     assert r.status_code == 401
 
 
 def test_password_reset_is_single_use(client, app):
     register(client, "dave@example.com", "originalpass")
-    client.get("/logout")
+    client.post("/logout")
     with app.app_context():
         from autocv.models import User
         from autocv.tokens import make_token, PURPOSE_RESET
@@ -44,11 +44,11 @@ def test_password_reset_is_single_use(client, app):
     r = client.post(f"/reset-password/{token}", json={"password": "brandnewpass"})
     assert r.status_code == 200
     # New password works (JSON login → 200 with success).
-    client.get("/logout")
+    client.post("/logout")
     r = login(client, "dave@example.com", "brandnewpass")
     assert r.status_code == 200 and r.get_json()["success"] is True
     # Reusing the same token now fails (password hash changed → token invalid).
-    client.get("/logout")
+    client.post("/logout")
     r = client.post(f"/reset-password/{token}", json={"password": "thirdpass"})
     assert r.status_code in (302, 400)  # redirected to forgot-password
 
