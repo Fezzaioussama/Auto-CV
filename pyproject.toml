@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "Flask web app that tailors a LaTeX CV to a job offer, renders a PDF, and runs an AI interview coach."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-license = { text = "Proprietary" }
+license = { text = "MIT" }
 authors = [{ name = "Auto-CV Team" }]
 keywords = ["flask", "cv", "resume", "latex", "llm", "ats"]
 

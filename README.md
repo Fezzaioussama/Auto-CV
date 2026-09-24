@@ -261,4 +261,4 @@ the PDF, then open `/interview` and review at least one answer.
 
 ## License
 
-No license file is included. Add one before distributing this externally.
+Released under the [MIT License](LICENSE).
