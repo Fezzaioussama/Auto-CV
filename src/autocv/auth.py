@@ -24,6 +24,7 @@ from flask import (
     current_app,
 )
 from flask_login import login_user, logout_user, login_required, current_user
+from werkzeug.security import check_password_hash, generate_password_hash
 
 try:  # importable both as a bare module (main.py) and as the src package
     from extensions import db, limiter
@@ -46,6 +47,8 @@ except ImportError:  # pragma: no cover - dependency declared in requirements
 auth_bp = Blueprint("auth", __name__)
 
 MIN_PASSWORD_LENGTH = 8
+# Hashed once at import so unknown-email logins cost the same as real ones.
+_DUMMY_PASSWORD_HASH = generate_password_hash("autocv-timing-equalizer")
 
 
 def _normalize_email(raw: str) -> tuple[str | None, str | None]:
@@ -169,6 +172,8 @@ def login():
 
     user = User.query.filter_by(email=email).first() if email else None
     # Constant-ish behaviour: always check a hash to avoid trivial user enumeration.
+    if user is None:
+        check_password_hash(_DUMMY_PASSWORD_HASH, password)
     valid = bool(user and user.check_password(password))
     if not valid:
         msg = "Incorrect email or password."
@@ -189,7 +194,7 @@ def login():
     return resp
 
 
-@auth_bp.route("/logout", methods=["POST", "GET"])
+@auth_bp.route("/logout", methods=["POST"])
 @login_required
 def logout():
     logout_user()

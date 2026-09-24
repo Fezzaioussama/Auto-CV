@@ -14,7 +14,9 @@ Renders the interview preparation page.
 ## `GET /api/llm/health`
 
 Reports the active LLM provider/configuration. This endpoint is diagnostic and
-does not expose API keys.
+does not expose API keys. In production (`FLASK_ENV` not set to `development`)
+it returns only `success` and `source`; the `config` string (base URL and model)
+is omitted so private infrastructure isn't revealed publicly.
 
 ### Success Response
 

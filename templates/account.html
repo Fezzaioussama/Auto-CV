@@ -124,7 +124,8 @@
                 if (!data.authenticated) { window.location.href = '/login'; return; }
                 const slot = $('navAuth');
                 const name = data.user.name || data.user.email;
-                slot.innerHTML = `<span class="nav-user"><i class="bi bi-person-circle"></i> ${name}</span>` +
+                const safeName = String(name).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+                slot.innerHTML = `<span class="nav-user"><i class="bi bi-person-circle"></i> ${safeName}</span>` +
                     `<a class="btn btn-outline-secondary btn-sm" href="/logout">Logout</a>`;
                 $('acctEmail').textContent = data.user.email;
                 const vb = $('acctVerified');

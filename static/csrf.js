@@ -52,6 +52,16 @@
         });
     };
 
+    // Logout is POST-only (so another site can't sign users out with a link).
+    // Turn the plain "/logout" nav links into a CSRF-protected POST.
+    document.addEventListener('click', function (event) {
+        const link = event.target.closest && event.target.closest('a[href="/logout"]');
+        if (!link) return;
+        event.preventDefault();
+        window.fetch('/logout', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .finally(function () { window.location.href = '/login'; });
+    });
+
     window.AutoCV = window.AutoCV || {};
     window.AutoCV.csrfToken = csrfToken;
 })();
