@@ -121,7 +121,7 @@ pdfminer-six==20251230
     # via pdfplumber
 pdfplumber==0.11.9
     # via auto-cv
-pillow==12.3.0
+pillow==13.0.0
     # via
     #   auto-cv
     #   fpdf2
