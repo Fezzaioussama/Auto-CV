@@ -139,7 +139,7 @@ pylatex==1.4.2
     # via auto-cv
 pyparsing==3.3.2
     # via matplotlib
-pypdf==6.19.0
+pypdf==6.21.4
     # via auto-cv
 pypdfium2==5.8.0
     # via pdfplumber
